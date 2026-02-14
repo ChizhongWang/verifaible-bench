@@ -1,0 +1,35 @@
+{
+  "version": "1.0",
+  "description": "VerifAIble 高亮类型选择 Benchmark 测试集",
+  "cases": [
+    {
+      "id": "text_001",
+      "category": "text",
+      "url": "https://www.stats.gov.cn/xxgk/jd/sjjd2020/202601/t20260119_1962338.html",
+      "question": "全国总人口数量",
+      "answer": "140489 万人"
+    },
+    {
+      "id": "table_001",
+      "category": "table",
+      "url": "https://www.stats.gov.cn/sj/zxfb/202602/t20260204_1962539.html",
+      "question": "黑色金属螺纹钢2026年1月下旬的涨跌幅(%)",
+      "answer": "-0.7 %"
+    },
+    {
+      "id": "table_002",
+      "category": "table",
+      "url": "https://www.stats.gov.cn/sj/zxfb/202601/t20260131_1962416.html",
+      "question": "2025年6月中国制造业PMI的出厂价格指数是多少(%)",
+      "answer": "46.2 %"
+    },
+    {
+      "id": "dynamic_001",
+      "category": "dynamic",
+      "evidence_type": "table",
+      "url": "https://www.sse.com.cn/market/bonddata/overview/day/",
+      "question": "2025年2月11日地方政府债成交笔数",
+      "answer": "61 笔"
+    }
+  ]
+}

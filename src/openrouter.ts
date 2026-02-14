@@ -26,13 +26,21 @@ export interface TextOutput {
   text: string;
 }
 
+/** OpenRouter message-style output (wraps output_text items) */
+export interface MessageOutput {
+  type: 'message';
+  content: Array<{ type: string; text?: string }>;
+  status?: string;
+}
+
 export interface ReasoningOutput {
   type: 'reasoning';
   id: string;
   summary: { type: 'summary_text'; text: string }[];
+  content?: Array<{ type: string; text?: string }>;
 }
 
-export type OutputItem = FunctionCall | TextOutput | ReasoningOutput;
+export type OutputItem = FunctionCall | TextOutput | MessageOutput | ReasoningOutput;
 
 export interface Usage {
   input_tokens: number;
