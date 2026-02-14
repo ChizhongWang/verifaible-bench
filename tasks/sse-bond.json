@@ -1,0 +1,9 @@
+[
+  {
+    "id": "dynamic_001",
+    "name": "上交所债券-地方政府债成交笔数",
+    "prompt": "请从上海证券交易所债券市场概览页面 https://www.sse.com.cn/market/bonddata/overview/day/ 获取 2025年2月10日 地方政府债的成交笔数，并创建可验证引用。",
+    "minCitations": 1,
+    "tags": ["dynamic", "table", "finance"]
+  }
+]

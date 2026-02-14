@@ -26,6 +26,7 @@ export interface ToolCallRecord {
 export interface TurnRecord {
   role: 'assistant' | 'tool';
   content: string;
+  reasoning?: string;
   toolCalls?: ToolCallRecord[];
   usage?: Usage;
 }
@@ -100,23 +101,38 @@ export async function runToolLoop(opts: LoopOptions): Promise<LoopResult> {
       totalUsage.output_tokens += response.usage.output_tokens;
     }
 
-    // Separate function_calls from text outputs
+    // Separate function_calls, text, and reasoning from outputs
     const functionCalls: FunctionCall[] = [];
     const textParts: string[] = [];
+    const reasoningParts: string[] = [];
 
     for (const item of response.output) {
       if (item.type === 'function_call') {
         functionCalls.push(item);
       } else if (item.type === 'text') {
         textParts.push(item.text);
+      } else if (item.type === 'message' && 'content' in item) {
+        // OpenRouter message-style output: extract output_text items
+        const msg = item as { content: Array<{ type: string; text?: string }> };
+        for (const part of msg.content) {
+          if (part.type === 'output_text' && part.text) {
+            textParts.push(part.text);
+          }
+        }
+      } else if (item.type === 'reasoning' && 'content' in item) {
+        const r = item as { content?: Array<{ type: string; text?: string }> };
+        for (const part of r.content ?? []) {
+          if (part.text) reasoningParts.push(part.text);
+        }
       }
-      // reasoning items are recorded but not acted on
     }
+
+    const reasoning = reasoningParts.length > 0 ? reasoningParts.join('\n') : undefined;
 
     // If no function calls, we're done
     if (functionCalls.length === 0) {
       const answer = textParts.join('\n');
-      turns.push({ role: 'assistant', content: answer, usage: response.usage });
+      turns.push({ role: 'assistant', content: answer, reasoning, usage: response.usage });
       return {
         answer,
         turns,
@@ -179,6 +195,7 @@ export async function runToolLoop(opts: LoopOptions): Promise<LoopResult> {
     turns.push({
       role: 'assistant',
       content: textParts.join('\n'),
+      reasoning,
       toolCalls: toolCallRecords,
       usage: response.usage,
     });
