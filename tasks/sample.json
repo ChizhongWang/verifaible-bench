@@ -1,0 +1,16 @@
+[
+  {
+    "id": "gold-density",
+    "name": "黄金密度查证",
+    "prompt": "黄金的密度是多少？请搜索权威来源并为关键数据创建可验证引用。",
+    "minCitations": 1,
+    "tags": ["simple", "single-fact"]
+  },
+  {
+    "id": "gdp-compare",
+    "name": "GDP对比",
+    "prompt": "对比中国和美国2024年的GDP总量，引用权威数据来源。",
+    "minCitations": 2,
+    "tags": ["comparison", "multi-fact"]
+  }
+]
