@@ -30,6 +30,14 @@
       "url": "https://www.sse.com.cn/market/bonddata/overview/day/",
       "question": "2025年2月11日地方政府债成交笔数",
       "answer": "61 笔"
+    },
+    {
+      "id": "dynamic_pdf_001",
+      "category": "dynamic+pdf",
+      "evidence_type": "pdf",
+      "url": "https://www.sse.com.cn/disclosure/listedinfo/announcement/",
+      "question": "中国黄金集团黄金珠宝股份有限公司（600916）2026年1月31日发布的关于设立分公司的公告中，拟在哪四个地区设立分公司？",
+      "answer": "北京、上海、河南、四川"
     }
   ]
 }

@@ -1,11 +1,15 @@
 /**
- * Benchmark Runner — iterates models × tasks, saves results
+ * Benchmark Runner — iterates models × tasks, auto-scores results
+ *
+ * Supports two input formats:
+ * 1. testset.json — { version, cases: [{ id, category, url, question, answer }] }
+ * 2. Legacy tasks/*.json — [{ id, name, prompt, ... }]
  */
 
 import 'dotenv/config';
 import * as fs from 'fs';
 import * as path from 'path';
-import { runToolLoop, type LoopResult } from './tool-loop.js';
+import { runToolLoop, type LoopResult, type ToolCallRecord } from './tool-loop.js';
 import { timestamp, formatDuration } from './utils.js';
 
 // ─── Config ───────────────────────────────────────────────────
@@ -16,7 +20,7 @@ const DEFAULT_MODELS = [
   'z-ai/glm-5',
 ];
 
-const SYSTEM_PROMPT = `你是 VerifAIble 助手，专注于从门户网站采集可验证证据。
+const SYSTEM_PROMPT = `你是 VerifAIble 助手，专注于从网页采集可验证证据。
 
 ## 输出要求（必须遵守）
 
@@ -35,7 +39,21 @@ const SYSTEM_PROMPT = `你是 VerifAIble 助手，专注于从门户网站采集
 
 verifaible_web_search（搜索）、web_fetch（获取网页内容）、analyze_page（深度分析网页）、test_action_steps（测试操作步骤）、verifaible_cite（创建引用）。
 
-# 门户网站证据采集 - 从数据门户提取可验证证据
+# 工作流：先判断，再分流
+
+## Step 1：判断页面类型
+
+给定 URL 后，**先用 web_fetch 获取静态内容**。然后判断：
+- **目标数据在返回内容中** → 静态页面，走路径 A
+- **目标数据不在 / 内容明显缺失（JS 动态渲染）** → 动态页面，走路径 B
+
+## 路径 A：静态页面（简单）
+
+1. 从 web_fetch 返回的内容中找到目标数据
+2. 直接调用 verifaible_cite（不需要 action_steps）
+3. 输出最终回答
+
+## 路径 B：动态页面（门户网站证据采集）
 
 当目标数据在门户网站上（需要点击、选择日期、切换标签页、筛选条件等操作才能看到），使用此工作流。
 
@@ -282,16 +300,246 @@ analyze_page(url)
 - ❌ **不要假设 analyze_page 返回的对象就是正确的** — 页面可能有 80+ 全局对象，analyze_page 只显示 15 个
 - ❌ **不要假设上一次 test_action_steps 的状态还在** — 每次调用是全新浏览器会话`;
 
-// ─── Task type ────────────────────────────────────────────────
+// ─── Types ───────────────────────────────────────────────────
 
-interface BenchTask {
+/** testset.json format */
+interface TestSet {
+  version: string;
+  description?: string;
+  cases: TestCase[];
+}
+
+interface TestCase {
+  id: string;
+  category: string; // "text" | "table" | "dynamic" | "dynamic+pdf"
+  evidence_type?: string; // "table" | "pdf" — expected evidence type for cite call
+  url: string;
+  question: string;
+  answer: string; // expected answer for scoring
+}
+
+/** Legacy tasks/*.json format */
+interface LegacyTask {
   id: string;
   name: string;
   prompt: string;
-  /** Expected minimum citations */
   minCitations?: number;
-  /** Tags for categorization */
   tags?: string[];
+}
+
+/** Per-run scoring result */
+interface ScoreResult {
+  /** 0.0–1.0: key values from expected answer found in model answer */
+  answerCorrect: number;
+  /** Whether verifaible_cite was called successfully */
+  citationCreated: boolean;
+  /** Whether [@v:N] appears in final answer text */
+  citationInText: boolean;
+  /** Whether the cite call's evidence_type matches expected */
+  evidenceTypeMatch: boolean | null; // null = no expected type specified
+  /** Composite score 0–100 */
+  totalScore: number;
+  /** Details for debugging */
+  details: {
+    expectedKeys: string[];
+    matchedKeys: string[];
+    actualEvidenceType: string | null;
+    expectedEvidenceType: string | null;
+  };
+}
+
+/** Summary row for final table */
+interface SummaryRow {
+  model: string;
+  task: string;
+  category: string;
+  roundTrips: number;
+  toolCalls: number;
+  inputTokens: number;
+  outputTokens: number;
+  citations: number;
+  durationMs: number;
+  score?: ScoreResult;
+  error?: string;
+}
+
+// ─── Scoring ─────────────────────────────────────────────────
+
+/**
+ * Extract key values from an expected answer string.
+ *
+ * Strategy:
+ * - If contains Chinese list separator（、）: split into individual items
+ * - Extract all numbers (including negative, decimal): -0.7, 140489, 46.2
+ * - Extract Chinese proper nouns (non-number segments after splitting)
+ */
+function extractKeyValues(answer: string): string[] {
+  const keys: string[] = [];
+
+  // Check if it's a list answer (contains 、)
+  if (answer.includes('、')) {
+    const items = answer.split('、').map((s) => s.trim()).filter(Boolean);
+    keys.push(...items);
+    return keys;
+  }
+
+  // Extract numbers (including negative/decimal)
+  const numbers = answer.match(/-?\d+(?:\.\d+)?/g);
+  if (numbers) {
+    keys.push(...numbers);
+  }
+
+  return keys;
+}
+
+/**
+ * Check if a key value is present in the model's answer text.
+ * For numbers: exact numeric match (ignore whitespace/formatting)
+ * For text items: substring match
+ */
+function keyFoundInAnswer(key: string, answer: string): boolean {
+  // Normalize both strings: remove spaces around numbers
+  const normalized = answer.replace(/\s+/g, ' ');
+
+  // Try direct substring match first
+  if (normalized.includes(key)) return true;
+
+  // For numbers, try matching the numeric value in various formats
+  const num = parseFloat(key);
+  if (!isNaN(num)) {
+    // Match the number with possible surrounding formatting
+    // e.g., "140489" should match "140,489" or "140 489"
+    const numStr = key.replace(/^-/, '');
+    const isNeg = key.startsWith('-');
+
+    // Try with comma separators removed
+    const cleanAnswer = normalized.replace(/,/g, '');
+    if (cleanAnswer.includes(key)) return true;
+
+    // Try matching as a standalone number with optional sign
+    const escaped = numStr.replace(/\./g, '\\.');
+    const pattern = isNeg
+      ? new RegExp(`[-−]\\s*${escaped}`)
+      : new RegExp(`(?<![\\d.])${escaped}(?![\\d.])`);
+    if (pattern.test(cleanAnswer)) return true;
+  }
+
+  return false;
+}
+
+/**
+ * Determine expected evidence type from a TestCase.
+ * Priority: explicit evidence_type > infer from category
+ */
+function getExpectedEvidenceType(tc: TestCase): string | null {
+  if (tc.evidence_type) return tc.evidence_type;
+  if (tc.category === 'text') return 'text';
+  if (tc.category === 'table') return 'table';
+  // For "dynamic" / "dynamic+pdf", evidence_type should be specified in testset
+  return null;
+}
+
+/**
+ * Extract the evidence_type used in the model's verifaible_cite call.
+ */
+function getActualEvidenceType(turns: Array<{ toolCalls?: ToolCallRecord[] }>): string | null {
+  for (const turn of turns) {
+    for (const tc of turn.toolCalls ?? []) {
+      if (tc.name === 'verifaible_cite') {
+        const args = tc.arguments;
+        return (args.evidence_type as string) || 'text'; // default is "text"
+      }
+    }
+  }
+  return null;
+}
+
+/**
+ * Check if verifaible_cite was called and returned a successful result
+ * (contains "user_seq" or "id" in result, not an error).
+ */
+function citeCallSucceeded(turns: Array<{ toolCalls?: ToolCallRecord[] }>): boolean {
+  for (const turn of turns) {
+    for (const tc of turn.toolCalls ?? []) {
+      if (tc.name === 'verifaible_cite') {
+        // Check result doesn't start with "Tool error" and contains some success indicator
+        if (tc.result.includes('Tool error')) return false;
+        if (tc.result.includes('user_seq') || tc.result.includes('"id"')) return true;
+        // If result is non-empty and not an error, consider it success
+        if (tc.result.length > 10 && !tc.result.includes('error')) return true;
+      }
+    }
+  }
+  return false;
+}
+
+/**
+ * Score a benchmark run result against a test case.
+ *
+ * Dimensions (weighted):
+ *   answerCorrect     — 40 pts: key values from expected answer found in model output
+ *   citationCreated   — 25 pts: verifaible_cite was called successfully
+ *   citationInText    — 15 pts: [@v:N] appears in answer
+ *   evidenceTypeMatch — 20 pts: cite used correct evidence_type
+ */
+function scoreResult(tc: TestCase, result: LoopResult): ScoreResult {
+  // 1. Answer correctness
+  const expectedKeys = extractKeyValues(tc.answer);
+  const matchedKeys = expectedKeys.filter((k) => keyFoundInAnswer(k, result.answer));
+  const answerCorrect = expectedKeys.length > 0 ? matchedKeys.length / expectedKeys.length : 0;
+
+  // 2. Citation created
+  const citationCreated = citeCallSucceeded(result.turns);
+
+  // 3. Citation in text
+  const citationInText = /\[@v:\d+\]/.test(result.answer);
+
+  // 4. Evidence type match
+  const expectedType = getExpectedEvidenceType(tc);
+  const actualType = getActualEvidenceType(result.turns);
+  let evidenceTypeMatch: boolean | null = null;
+  if (expectedType && actualType) {
+    evidenceTypeMatch = actualType === expectedType;
+  } else if (expectedType && !actualType) {
+    // No cite call at all → mismatch
+    evidenceTypeMatch = false;
+  }
+
+  // Composite score
+  let totalScore = 0;
+  totalScore += answerCorrect * 40;
+  totalScore += citationCreated ? 25 : 0;
+  totalScore += citationInText ? 15 : 0;
+  if (evidenceTypeMatch === true) totalScore += 20;
+  else if (evidenceTypeMatch === null) totalScore += 20; // no expected type = full marks
+
+  return {
+    answerCorrect,
+    citationCreated,
+    citationInText,
+    evidenceTypeMatch,
+    totalScore: Math.round(totalScore),
+    details: {
+      expectedKeys,
+      matchedKeys,
+      actualEvidenceType: actualType,
+      expectedEvidenceType: expectedType,
+    },
+  };
+}
+
+// ─── Prompt Generation ───────────────────────────────────────
+
+function generatePrompt(tc: TestCase): string {
+  return `请从以下网页获取数据并创建可验证引用：
+
+URL：${tc.url}
+问题：${tc.question}
+
+要求：
+1. 访问上述 URL，找到问题对应的数据
+2. 创建可验证的证据引用（verifaible_cite）
+3. 在最终回答中包含具体数据和 [@v:ID] 引用标记`;
 }
 
 // ─── Main ─────────────────────────────────────────────────────
@@ -299,10 +547,12 @@ interface BenchTask {
 async function main() {
   // Parse CLI args
   const args = process.argv.slice(2);
-  const taskFile = args[0] || 'tasks/sample.json';
+  const taskFile = args[0] || 'testset.json';
   const modelsArg = args[1]; // optional comma-separated model list
+  const filterArg = args[2]; // optional task ID filter (comma-separated)
 
   const models = modelsArg ? modelsArg.split(',') : DEFAULT_MODELS;
+  const taskFilter = filterArg ? filterArg.split(',') : null;
 
   // Load tasks
   const tasksPath = path.resolve(taskFile);
@@ -311,49 +561,72 @@ async function main() {
     process.exit(1);
   }
 
-  const tasks: BenchTask[] = JSON.parse(fs.readFileSync(tasksPath, 'utf-8'));
-  console.log(`Loaded ${tasks.length} task(s) from ${taskFile}`);
+  const raw = JSON.parse(fs.readFileSync(tasksPath, 'utf-8'));
+
+  // Detect format: testset.json has { version, cases }, legacy is array
+  let cases: TestCase[];
+  let isTestSet = false;
+
+  if (raw.cases && Array.isArray(raw.cases)) {
+    // testset.json format
+    isTestSet = true;
+    cases = raw.cases as TestCase[];
+    console.log(`Loaded testset v${raw.version}: ${raw.description || ''}`);
+  } else if (Array.isArray(raw)) {
+    // Legacy format: convert to TestCase-like structure
+    cases = (raw as LegacyTask[]).map((t) => ({
+      id: t.id,
+      category: 'unknown',
+      url: '',
+      question: t.name,
+      answer: '',
+      _prompt: t.prompt, // carry original prompt
+    })) as any;
+    console.log(`Loaded ${cases.length} legacy task(s)`);
+  } else {
+    console.error('Unrecognized task file format');
+    process.exit(1);
+  }
+
+  // Apply task ID filter
+  if (taskFilter) {
+    cases = cases.filter((c) => taskFilter.includes(c.id));
+  }
+
+  console.log(`Tasks: ${cases.map((c) => c.id).join(', ')}`);
   console.log(`Models: ${models.join(', ')}`);
-  console.log(`Total runs: ${tasks.length * models.length}\n`);
+  console.log(`Total runs: ${cases.length * models.length}\n`);
 
   // Ensure results directory
   const resultsDir = path.resolve('results');
   fs.mkdirSync(resultsDir, { recursive: true });
 
   // Run all combinations
-  const summary: Array<{
-    model: string;
-    task: string;
-    roundTrips: number;
-    toolCalls: number;
-    inputTokens: number;
-    outputTokens: number;
-    citations: number;
-    durationMs: number;
-    error?: string;
-  }> = [];
+  const summary: SummaryRow[] = [];
 
   for (const model of models) {
-    for (const task of tasks) {
-      const runId = `${sanitize(model)}_${task.id}_${timestamp()}`;
+    for (const tc of cases) {
+      const runId = `${sanitize(model)}_${tc.id}_${timestamp()}`;
       const runDir = path.join(resultsDir, runId);
       fs.mkdirSync(runDir, { recursive: true });
 
-      console.log(`═══ ${model} × ${task.name} ═══`);
+      const prompt = isTestSet ? generatePrompt(tc) : (tc as any)._prompt || tc.question;
+      console.log(`═══ ${model} × ${tc.id} (${tc.category}) ═══`);
 
       let result: LoopResult;
       try {
         result = await runToolLoop({
           model,
           systemPrompt: SYSTEM_PROMPT,
-          userMessage: task.prompt,
+          userMessage: prompt,
         });
       } catch (err) {
         const errorMsg = err instanceof Error ? err.message : String(err);
         console.error(`  ERROR: ${errorMsg}\n`);
         summary.push({
           model,
-          task: task.id,
+          task: tc.id,
+          category: tc.category,
           roundTrips: 0,
           toolCalls: 0,
           inputTokens: 0,
@@ -362,7 +635,6 @@ async function main() {
           durationMs: 0,
           error: errorMsg,
         });
-        // Save error
         fs.writeFileSync(path.join(runDir, 'error.txt'), errorMsg);
         continue;
       }
@@ -376,6 +648,12 @@ async function main() {
         return acc + (t.toolCalls?.filter((c) => c.name === 'verifaible_cite').length ?? 0);
       }, 0);
 
+      // Auto-score if we have an expected answer
+      let score: ScoreResult | undefined;
+      if (tc.answer) {
+        score = scoreResult(tc, result);
+      }
+
       // Save results
       fs.writeFileSync(
         path.join(runDir, 'conversation.json'),
@@ -384,8 +662,11 @@ async function main() {
 
       const metrics = {
         model,
-        task: task.id,
-        taskName: task.name,
+        task: tc.id,
+        category: tc.category,
+        question: tc.question,
+        expectedAnswer: tc.answer,
+        modelAnswer: result.answer,
         roundTrips: result.roundTrips,
         toolCallCount: result.toolCallCount,
         citeCallCount,
@@ -394,6 +675,7 @@ async function main() {
         outputTokens: result.totalUsage.output_tokens,
         durationMs: result.durationMs,
         duration: formatDuration(result.durationMs),
+        score,
       };
       fs.writeFileSync(path.join(runDir, 'metrics.json'), JSON.stringify(metrics, null, 2));
 
@@ -413,56 +695,148 @@ async function main() {
         ),
       );
 
+      const scoreStr = score ? ` | Score: ${score.totalScore}/100` : '';
       console.log(
-        `  Done: ${result.roundTrips} turns, ${result.toolCallCount} tool calls, ` +
-          `${citeCallCount} cites, ${citationCount} [@v:] refs, ` +
-          `${result.totalUsage.input_tokens}+${result.totalUsage.output_tokens} tokens, ` +
+        `  Done: ${result.roundTrips} turns, ${result.toolCallCount} tools, ` +
+          `${citeCallCount} cites, ${citationCount} refs${scoreStr}`,
+      );
+      if (score) {
+        console.log(
+          `  Answer: ${(score.answerCorrect * 100).toFixed(0)}% ` +
+            `(${score.details.matchedKeys.join(',')}/${score.details.expectedKeys.join(',')}) | ` +
+            `Cite: ${score.citationCreated ? 'Y' : 'N'} | ` +
+            `Ref: ${score.citationInText ? 'Y' : 'N'} | ` +
+            `Type: ${score.evidenceTypeMatch === null ? '-' : score.evidenceTypeMatch ? 'Y' : 'N'} ` +
+            `(${score.details.actualEvidenceType || 'none'}→${score.details.expectedEvidenceType || 'any'})`,
+        );
+      }
+      console.log(
+        `  ${result.totalUsage.input_tokens}+${result.totalUsage.output_tokens} tokens, ` +
           `${formatDuration(result.durationMs)}`,
       );
-      console.log(`  Saved to ${runDir}\n`);
+      console.log(`  → ${runDir}\n`);
 
       summary.push({
         model,
-        task: task.id,
+        task: tc.id,
+        category: tc.category,
         roundTrips: result.roundTrips,
         toolCalls: result.toolCallCount,
         inputTokens: result.totalUsage.input_tokens,
         outputTokens: result.totalUsage.output_tokens,
         citations: citationCount,
         durationMs: result.durationMs,
+        score,
       });
     }
   }
 
-  // Print summary table
-  console.log('\n════════════════════════════════════════════════');
-  console.log('                   SUMMARY');
-  console.log('════════════════════════════════════════════════');
-  console.log(
-    padRight('Model', 30) +
-      padRight('Task', 12) +
-      padRight('Turns', 7) +
-      padRight('Tools', 7) +
-      padRight('Cites', 7) +
-      padRight('InTok', 9) +
-      padRight('OutTok', 9) +
-      padRight('Time', 10) +
-      'Error',
-  );
-  console.log('-'.repeat(100));
+  // ─── Print Summary Table ─────────────────────────────────
 
-  for (const row of summary) {
+  console.log('\n' + '═'.repeat(120));
+  console.log('  BENCHMARK SUMMARY');
+  console.log('═'.repeat(120));
+
+  const hasScores = summary.some((r) => r.score);
+
+  if (hasScores) {
     console.log(
-      padRight(row.model, 30) +
-        padRight(row.task, 12) +
-        padRight(String(row.roundTrips), 7) +
-        padRight(String(row.toolCalls), 7) +
-        padRight(String(row.citations), 7) +
-        padRight(String(row.inputTokens), 9) +
-        padRight(String(row.outputTokens), 9) +
-        padRight(formatDuration(row.durationMs), 10) +
-        (row.error || ''),
+      padRight('Model', 25) +
+        padRight('Task', 18) +
+        padRight('Cat', 12) +
+        padRight('Ans%', 6) +
+        padRight('Cite', 6) +
+        padRight('Ref', 5) +
+        padRight('Type', 6) +
+        padRight('Total', 7) +
+        padRight('Turns', 6) +
+        padRight('Tools', 6) +
+        padRight('Tokens', 14) +
+        padRight('Time', 8) +
+        'Error',
     );
+    console.log('─'.repeat(120));
+
+    for (const row of summary) {
+      const s = row.score;
+      console.log(
+        padRight(row.model, 25) +
+          padRight(row.task, 18) +
+          padRight(row.category, 12) +
+          padRight(s ? `${(s.answerCorrect * 100).toFixed(0)}%` : '-', 6) +
+          padRight(s ? (s.citationCreated ? 'Y' : 'N') : '-', 6) +
+          padRight(s ? (s.citationInText ? 'Y' : 'N') : '-', 5) +
+          padRight(s ? (s.evidenceTypeMatch === null ? '-' : s.evidenceTypeMatch ? 'Y' : 'N') : '-', 6) +
+          padRight(s ? `${s.totalScore}` : '-', 7) +
+          padRight(String(row.roundTrips), 6) +
+          padRight(String(row.toolCalls), 6) +
+          padRight(`${row.inputTokens}+${row.outputTokens}`, 14) +
+          padRight(formatDuration(row.durationMs), 8) +
+          (row.error || ''),
+      );
+    }
+
+    // Per-model averages
+    console.log('─'.repeat(120));
+    const modelGroups = new Map<string, SummaryRow[]>();
+    for (const row of summary) {
+      if (!row.score) continue;
+      const group = modelGroups.get(row.model) ?? [];
+      group.push(row);
+      modelGroups.set(row.model, group);
+    }
+
+    for (const [model, rows] of modelGroups) {
+      const avgScore = rows.reduce((s, r) => s + (r.score?.totalScore ?? 0), 0) / rows.length;
+      const avgAns = rows.reduce((s, r) => s + (r.score?.answerCorrect ?? 0), 0) / rows.length;
+      const citeRate = rows.filter((r) => r.score?.citationCreated).length / rows.length;
+      const refRate = rows.filter((r) => r.score?.citationInText).length / rows.length;
+      const avgTokens = rows.reduce((s, r) => s + r.inputTokens + r.outputTokens, 0) / rows.length;
+      const avgTime = rows.reduce((s, r) => s + r.durationMs, 0) / rows.length;
+
+      console.log(
+        padRight(`AVG ${model}`, 25) +
+          padRight(`(${rows.length} runs)`, 18) +
+          padRight('', 12) +
+          padRight(`${(avgAns * 100).toFixed(0)}%`, 6) +
+          padRight(`${(citeRate * 100).toFixed(0)}%`, 6) +
+          padRight(`${(refRate * 100).toFixed(0)}%`, 5) +
+          padRight('', 6) +
+          padRight(`${avgScore.toFixed(1)}`, 7) +
+          padRight('', 6) +
+          padRight('', 6) +
+          padRight(`~${Math.round(avgTokens)}`, 14) +
+          padRight(formatDuration(avgTime), 8),
+      );
+    }
+  } else {
+    // Legacy mode: no scores
+    console.log(
+      padRight('Model', 30) +
+        padRight('Task', 12) +
+        padRight('Turns', 7) +
+        padRight('Tools', 7) +
+        padRight('Cites', 7) +
+        padRight('InTok', 9) +
+        padRight('OutTok', 9) +
+        padRight('Time', 10) +
+        'Error',
+    );
+    console.log('-'.repeat(100));
+
+    for (const row of summary) {
+      console.log(
+        padRight(row.model, 30) +
+          padRight(row.task, 12) +
+          padRight(String(row.roundTrips), 7) +
+          padRight(String(row.toolCalls), 7) +
+          padRight(String(row.citations), 7) +
+          padRight(String(row.inputTokens), 9) +
+          padRight(String(row.outputTokens), 9) +
+          padRight(formatDuration(row.durationMs), 10) +
+          (row.error || ''),
+      );
+    }
   }
 
   // Save summary
@@ -470,6 +844,7 @@ async function main() {
     path.join(resultsDir, `summary_${timestamp()}.json`),
     JSON.stringify(summary, null, 2),
   );
+  console.log(`\nSummary saved to results/summary_${timestamp()}.json`);
 }
 
 function sanitize(s: string): string {
