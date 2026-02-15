@@ -440,6 +440,11 @@ function extractKeyValues(answer: string): string[] {
     keys.push(...numbers);
   }
 
+  // If no numbers or list found, use the whole answer as a text key (for text-based answers)
+  if (keys.length === 0 && answer.trim().length > 0) {
+    keys.push(answer.trim());
+  }
+
   return keys;
 }
 
