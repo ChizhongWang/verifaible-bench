@@ -1,30 +1,65 @@
 {
-  "version": "1.0",
-  "description": "VerifAIble 高亮类型选择 Benchmark 测试集",
+  "version": "2.0",
+  "description": "VerifAIble Evidence Benchmark — 中美金融门户网站证据采集能力评测",
   "cases": [
     {
-      "id": "text_001",
+      "id": "cn_text_001",
       "category": "text",
       "url": "https://www.stats.gov.cn/xxgk/jd/sjjd2020/202601/t20260119_1962338.html",
       "question": "全国总人口数量",
       "answer": "140489 万人"
     },
     {
-      "id": "table_001",
+      "id": "cn_text_002",
+      "category": "text",
+      "url": "https://www.csrc.gov.cn/csrc/c100002/common_zcnr.shtml",
+      "question": "根据证监会介绍页面，中国证监会在各省、自治区、直辖市和计划单列市设立了多少个证券监管局？",
+      "answer": "36"
+    },
+    {
+      "id": "cn_text_003",
+      "category": "text",
+      "url": "https://www.csrc.gov.cn/csrc/c100002/common_zcnr.shtml",
+      "question": "根据证监会介绍页面，中国证监会会机关内设多少个职能部门？",
+      "answer": "19"
+    },
+    {
+      "id": "cn_table_001",
       "category": "table",
       "url": "https://www.stats.gov.cn/sj/zxfb/202602/t20260204_1962539.html",
       "question": "黑色金属螺纹钢2026年1月下旬的涨跌幅(%)",
       "answer": "-0.7 %"
     },
     {
-      "id": "table_002",
+      "id": "cn_table_002",
       "category": "table",
       "url": "https://www.stats.gov.cn/sj/zxfb/202601/t20260131_1962416.html",
       "question": "2025年6月中国制造业PMI的出厂价格指数是多少(%)",
       "answer": "46.2 %"
     },
     {
-      "id": "dynamic_001",
+      "id": "cn_table_003",
+      "category": "table",
+      "url": "http://www.pbc.gov.cn/zhengcehuobisi/125207/125213/125440/125838/125885/125896/2968988/index.html",
+      "question": "根据人民币现行利率表（2015年10月24日），城乡居民及单位存款中活期存款的利率是多少？",
+      "answer": "0.35 %"
+    },
+    {
+      "id": "cn_table_004",
+      "category": "table",
+      "url": "http://www.pbc.gov.cn/zhengcehuobisi/125207/125213/125440/125838/125885/125896/2968988/index.html",
+      "question": "根据人民币现行利率表（2015年10月24日），整存整取定期存款三年期的利率是多少？",
+      "answer": "2.75 %"
+    },
+    {
+      "id": "cn_table_005",
+      "category": "table",
+      "url": "http://www.pbc.gov.cn/zhengcehuobisi/125207/125213/125440/125838/125885/125896/2968998/index.html",
+      "question": "根据金融机构人民币贷款基准利率调整表（2015年10月24日），五年以上贷款的调整后利率是多少？",
+      "answer": "4.90 %"
+    },
+    {
+      "id": "cn_dynamic_001",
       "category": "dynamic",
       "evidence_type": "table",
       "url": "https://www.sse.com.cn/market/bonddata/overview/day/",
@@ -32,7 +67,31 @@
       "answer": "61 笔"
     },
     {
-      "id": "dynamic_pdf_001",
+      "id": "cn_dynamic_002",
+      "category": "dynamic",
+      "evidence_type": "table",
+      "url": "https://data.eastmoney.com/cjsj/globalRateLPR.html",
+      "question": "根据东方财富网LPR品种数据页面，2024年10月21日公布的1年期LPR报价是多少？",
+      "answer": "3.10 %"
+    },
+    {
+      "id": "cn_dynamic_003",
+      "category": "dynamic",
+      "evidence_type": "table",
+      "url": "https://data.eastmoney.com/cjsj/globalRateLPR.html",
+      "question": "根据东方财富网LPR品种数据页面，2024年10月21日公布的5年期以上LPR报价是多少？",
+      "answer": "3.60 %"
+    },
+    {
+      "id": "cn_dynamic_004",
+      "category": "dynamic",
+      "evidence_type": "table",
+      "url": "https://data.eastmoney.com/cjsj/cpi.html",
+      "question": "根据东方财富网CPI数据页面，2023年12月全国居民消费价格指数（CPI）同比增长率是多少？",
+      "answer": "-0.3 %"
+    },
+    {
+      "id": "cn_dynamic_pdf_001",
       "category": "dynamic+pdf",
       "evidence_type": "pdf",
       "url": "https://www.sse.com.cn/disclosure/listedinfo/announcement/",
@@ -40,11 +99,39 @@
       "answer": "北京、上海、河南、四川"
     },
     {
+      "id": "us_text_001",
+      "category": "text",
+      "url": "https://www.federalreserve.gov/newsevents/pressreleases/monetary20240131a1.htm",
+      "question": "根据美联储2024年1月31日FOMC会议实施说明(Implementation Note)，自2024年2月1日起的准备金余额利率(IORB rate)是多少？",
+      "answer": "5.4 %"
+    },
+    {
+      "id": "us_text_002",
+      "category": "text",
+      "url": "https://www.federalreserve.gov/newsevents/pressreleases/monetary20240918a.htm",
+      "question": "在2024年9月17-18日FOMC会议上，谁投了唯一的反对票(dissent)？",
+      "answer": "Bowman"
+    },
+    {
+      "id": "us_text_003",
+      "category": "text",
+      "url": "https://www.federalreserve.gov/newsevents/pressreleases/monetary20240918a1.htm",
+      "question": "根据美联储2024年9月18日FOMC会议实施说明，准备金余额利率(IORB rate)下调至多少？",
+      "answer": "4.9 %"
+    },
+    {
+      "id": "us_table_001",
+      "category": "table",
+      "url": "https://home.treasury.gov/resource-center/data-chart-center/interest-rates/TextView?type=daily_treasury_yield_curve&field_tdr_date_value=2024&field_tdr_date_value_month=202401",
+      "question": "2024年1月2日美国国债收益率曲线(Daily Treasury Par Yield Curve)中，10年期(10 Yr)收益率是多少？",
+      "answer": "4.09"
+    },
+    {
       "id": "video_001",
       "category": "video",
       "evidence_type": "video",
       "url": "https://www.youtube.com",
-      "question": "在 TED 演讲 'Ken Robinson: Do schools kill creativity?' (youtube.com/watch?v=iG9CE55wbtY) 中，他讲了一个小女孩画画的故事。当老师说没人知道上帝长什么样时，小女孩怎么回答的？",
+      "question": "在 TED 演讲 'Ken Robinson: Do schools kill creativity?' 中，他讲了一个小女孩画画的故事。当老师说没人知道上帝长什么样时，小女孩怎么回答的？",
       "answer": "They will in a minute"
     },
     {
