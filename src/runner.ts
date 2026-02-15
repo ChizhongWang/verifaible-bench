@@ -9,7 +9,8 @@
 import 'dotenv/config';
 import * as fs from 'fs';
 import * as path from 'path';
-import { runToolLoop, type LoopResult, type ToolCallRecord } from './tool-loop.js';
+import { runToolLoop, type LoopResult, type ToolCallRecord, type TurnRecord } from './tool-loop.js';
+import { getToolDefinitions } from './tools/registry.js';
 import { timestamp, formatDuration } from './utils.js';
 
 // ─── Config ───────────────────────────────────────────────────
@@ -576,6 +577,108 @@ function scoreResult(tc: TestCase, result: LoopResult): ScoreResult {
   };
 }
 
+// ─── SFT Export ──────────────────────────────────────────────
+
+/**
+ * Build SFT training example from a benchmark run.
+ *
+ * Output format: OpenAI fine-tuning compatible (messages + tools).
+ * Also compatible with LLaMA-Factory / Axolotl.
+ *
+ * Includes:
+ * - System prompt + tool definitions
+ * - User message
+ * - Assistant tool_calls + reasoning (thinking)
+ * - Tool results
+ * - Final assistant answer
+ * - Metadata (model, score, tokens) for quality filtering
+ */
+function buildSFTExample(
+  systemPrompt: string,
+  userPrompt: string,
+  turns: TurnRecord[],
+  metadata: {
+    model: string;
+    task_id: string;
+    category: string;
+    score: number;
+    answer_correct: number;
+    citation_created: boolean;
+    turns: number;
+    tool_calls: number;
+    input_tokens: number;
+    output_tokens: number;
+    duration_ms: number;
+  },
+): Record<string, unknown> {
+  const messages: Record<string, unknown>[] = [
+    { role: 'system', content: systemPrompt },
+    { role: 'user', content: userPrompt },
+  ];
+
+  let callIdCounter = 0;
+
+  for (const turn of turns) {
+    if (turn.toolCalls && turn.toolCalls.length > 0) {
+      // Assistant message with tool calls
+      const toolCalls = turn.toolCalls.map((tc) => {
+        const id = `call_${callIdCounter++}`;
+        return {
+          id,
+          type: 'function',
+          function: {
+            name: tc.name,
+            arguments: JSON.stringify(tc.arguments),
+          },
+        };
+      });
+
+      const assistantMsg: Record<string, unknown> = {
+        role: 'assistant',
+        content: turn.content || '',
+        tool_calls: toolCalls,
+      };
+      // Preserve reasoning/thinking tokens for distillation
+      if (turn.reasoning) {
+        assistantMsg.reasoning = turn.reasoning;
+      }
+      messages.push(assistantMsg);
+
+      // Tool result messages
+      for (let i = 0; i < turn.toolCalls.length; i++) {
+        messages.push({
+          role: 'tool',
+          tool_call_id: toolCalls[i].id,
+          name: turn.toolCalls[i].name,
+          content: turn.toolCalls[i].result,
+        });
+      }
+    } else {
+      // Final assistant message (text only)
+      const assistantMsg: Record<string, unknown> = {
+        role: 'assistant',
+        content: turn.content,
+      };
+      if (turn.reasoning) {
+        assistantMsg.reasoning = turn.reasoning;
+      }
+      messages.push(assistantMsg);
+    }
+  }
+
+  // Tool definitions in OpenAI format
+  const tools = getToolDefinitions().map((td) => ({
+    type: 'function',
+    function: {
+      name: td.name,
+      description: td.description,
+      parameters: td.parameters,
+    },
+  }));
+
+  return { messages, tools, metadata };
+}
+
 // ─── Prompt Generation ───────────────────────────────────────
 
 function generatePrompt(tc: TestCase): string {
@@ -756,6 +859,30 @@ async function main() {
           2,
         ),
       );
+
+      // Export SFT training data
+      const sftExample = buildSFTExample(
+        SYSTEM_PROMPT,
+        prompt,
+        result.turns,
+        {
+          model,
+          task_id: tc.id,
+          category: tc.category,
+          score: score?.totalScore ?? -1,
+          answer_correct: score?.answerCorrect ?? -1,
+          citation_created: score?.citationCreated ?? false,
+          turns: result.roundTrips,
+          tool_calls: result.toolCallCount,
+          input_tokens: result.totalUsage.input_tokens,
+          output_tokens: result.totalUsage.output_tokens,
+          duration_ms: result.durationMs,
+        },
+      );
+      fs.writeFileSync(path.join(runDir, 'sft.json'), JSON.stringify(sftExample, null, 2));
+      // Append to aggregated dataset (one JSONL line per run)
+      const sftDatasetPath = path.join(resultsDir, 'sft_dataset.jsonl');
+      fs.appendFileSync(sftDatasetPath, JSON.stringify(sftExample) + '\n');
 
       const scoreStr = score ? ` | Score: ${score.totalScore}/100` : '';
       console.log(
