@@ -19,6 +19,8 @@ export async function handleCite(args: Record<string, unknown>): Promise<string>
     element_selector: args.element_selector as string | undefined,
     element_alt: args.element_alt as string | undefined,
     page_number: args.page_number as number | undefined,
+    timestamp: args.timestamp as number | undefined,
+    video_id: args.video_id as string | undefined,
   });
 
   let result = `引用已创建 (user_seq=${data.user_seq})。在回答中使用 [@v:${data.user_seq}] 标记此引用。`;

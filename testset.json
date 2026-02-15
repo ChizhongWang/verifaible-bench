@@ -38,6 +38,22 @@
       "url": "https://www.sse.com.cn/disclosure/listedinfo/announcement/",
       "question": "中国黄金集团黄金珠宝股份有限公司（600916）2026年1月31日发布的关于设立分公司的公告中，拟在哪四个地区设立分公司？",
       "answer": "北京、上海、河南、四川"
+    },
+    {
+      "id": "video_001",
+      "category": "video",
+      "evidence_type": "video",
+      "url": "https://www.youtube.com",
+      "question": "在 TED 演讲 'Ken Robinson: Do schools kill creativity?' (youtube.com/watch?v=iG9CE55wbtY) 中，他讲了一个小女孩画画的故事。当老师说没人知道上帝长什么样时，小女孩怎么回答的？",
+      "answer": "They will in a minute"
+    },
+    {
+      "id": "video_002",
+      "category": "video",
+      "evidence_type": "video",
+      "url": "https://www.youtube.com",
+      "question": "在 3Blue1Brown 的 'But what is a neural network?' 视频 (youtube.com/watch?v=aircAruvnKk) 中，输入层有多少个神经元？这个数字是怎么来的？",
+      "answer": "784"
     }
   ]
 }

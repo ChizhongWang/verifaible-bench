@@ -8,6 +8,7 @@ import { handleWebFetch } from './web-fetch.js';
 import { handleAnalyzePage } from './analyze-page.js';
 import { handleTestSteps } from './test-steps.js';
 import { handleCite } from './cite.js';
+import { handleVideoTranscript } from './video-transcript.js';
 
 export interface ToolHandler {
   (args: Record<string, unknown>): Promise<string>;
@@ -125,6 +126,23 @@ verify_type 说明：
 register(
   {
     type: 'function',
+    name: 'video_transcript',
+    description:
+      '获取 YouTube 视频的字幕文本（带时间戳）。返回格式：[m:ss] 字幕文本。适用：从视频中提取信息作为证据。工作流：先用 web_search 找到视频 URL → video_transcript 获取字幕 → verifaible_cite 创建引用。',
+    parameters: {
+      type: 'object',
+      properties: {
+        url: { type: 'string', description: 'YouTube 视频 URL' },
+      },
+      required: ['url'],
+    },
+  },
+  handleVideoTranscript,
+);
+
+register(
+  {
+    type: 'function',
     name: 'verifaible_cite',
     description: `为论点创建可验证引用，返回 user_seq 用于标记 [@v:user_seq]。
 静态页面：提供 source_url + quoted_text + anchor。
@@ -152,6 +170,8 @@ PDF：evidence_type="pdf" + page_number。`,
         element_selector: { type: 'string', description: '目标元素 CSS selector' },
         element_alt: { type: 'string', description: '图片 alt 或视频标题' },
         page_number: { type: 'number', description: 'PDF 页码（1-indexed）' },
+        timestamp: { type: 'number', description: '视频时间戳（秒），用于截图跳转到对应时间点' },
+        video_id: { type: 'string', description: '视频 ID（如 YouTube video ID）' },
       },
       required: ['claim', 'source_url', 'quoted_text', 'anchor'],
     },
