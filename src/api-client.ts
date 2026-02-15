@@ -140,6 +140,8 @@ export async function createEvidence(params: {
   element_selector?: string;
   element_alt?: string;
   page_number?: number;
+  timestamp?: number;
+  video_id?: string;
 }): Promise<CreateEvidenceResponse> {
   // Filter out undefined values
   const body: Record<string, unknown> = {};

@@ -37,7 +37,7 @@ const SYSTEM_PROMPT = `你是 VerifAIble 助手，专注于从网页采集可验
 
 ## 可用工具
 
-verifaible_web_search（搜索）、web_fetch（获取网页内容）、analyze_page（深度分析网页）、test_action_steps（测试操作步骤）、verifaible_cite（创建引用）。
+verifaible_web_search（搜索）、web_fetch（获取网页内容）、analyze_page（深度分析网页）、test_action_steps（测试操作步骤）、video_transcript（获取视频字幕）、verifaible_cite（创建引用）。
 
 # 工作流：先判断，再分流
 
@@ -72,6 +72,30 @@ verifaible_web_search（搜索）、web_fetch（获取网页内容）、analyze_
 | **提交** | verifaible_cite | 一切确认后，创建正式证据 |
 
 **关键原则**：先理解机制，再动手操作。不要基于截断的函数签名去猜——用 exec_js 读完整源码。
+
+## 路径 C：视频证据（字幕提取）
+
+当目标信息在 YouTube 视频中时，使用此工作流。
+
+1. 用 verifaible_web_search 搜索视频的完整标题（加 site:youtube.com）
+2. 从搜索结果中获取视频 URL
+3. 调用 video_transcript(url) 获取带时间戳的字幕
+4. 在字幕中找到答案对应的内容和时间戳
+5. 调用 verifaible_cite 创建引用：
+   - evidence_type="video"
+   - source_url = 视频页面 URL
+   - timestamp = 答案出现的秒数（从字幕时间戳获取）
+   - quoted_text = 字幕原文
+   - anchor = 关键短语
+
+## 路径 D：YouTube 原生搜索 + 字幕
+
+当需要在 YouTube 上搜索视频时：
+
+1. 用 analyze_page 分析 youtube.com 首页（或直接构造搜索 URL）
+2. 用 test_action_steps 在 YouTube 搜索结果页提取目标视频 URL
+3. 调用 video_transcript 获取字幕
+4. verifaible_cite 创建引用
 
 ## 工具详解
 
@@ -154,7 +178,23 @@ Object.keys(window).filter(k => { try { var o = window[k]; return o && typeof o 
 }
 \`\`\`
 
-### 3. verifaible_cite — 提交（最后一步）
+### 3. video_transcript — 获取视频字幕
+
+获取 YouTube 视频的带时间戳字幕文本。
+
+\`\`\`json
+{ "url": "https://www.youtube.com/watch?v=VIDEO_ID" }
+\`\`\`
+
+返回格式：
+\`\`\`
+[0:18] We're no strangers to love
+[0:22] You know the rules and so do I
+\`\`\`
+
+时间戳格式为 \`m:ss\`，可用于 verifaible_cite 的 timestamp 参数（转换为秒数）。
+
+### 4. verifaible_cite — 提交（最后一步）
 
 创建可验证引用，返回 \`user_seq\`。**只在验证阶段确认数据完全正确后调用。**
 
@@ -193,6 +233,17 @@ Object.keys(window).filter(k => { try { var o = window[k]; return o && typeof o 
 {
   "evidence_type": "image",
   "element_alt": "GDP增长趋势"
+}
+\`\`\`
+
+#### evidence_type="video" — 视频时间戳引用
+\`\`\`json
+{
+  "evidence_type": "video",
+  "source_url": "https://www.youtube.com/watch?v=VIDEO_ID",
+  "timestamp": 244,
+  "quoted_text": "字幕原文",
+  "anchor": "关键短语"
 }
 \`\`\`
 
@@ -435,6 +486,7 @@ function getExpectedEvidenceType(tc: TestCase): string | null {
   if (tc.evidence_type) return tc.evidence_type;
   if (tc.category === 'text') return 'text';
   if (tc.category === 'table') return 'table';
+  if (tc.category.startsWith('video')) return 'video';
   // For "dynamic" / "dynamic+pdf", evidence_type should be specified in testset
   return null;
 }
@@ -531,6 +583,20 @@ function scoreResult(tc: TestCase, result: LoopResult): ScoreResult {
 // ─── Prompt Generation ───────────────────────────────────────
 
 function generatePrompt(tc: TestCase): string {
+  // Video category: hint to use video workflow
+  if (tc.category.startsWith('video')) {
+    return `请从视频中获取信息并创建可验证引用：
+
+URL：${tc.url}
+问题：${tc.question}
+
+要求：
+1. 先搜索找到目标视频，然后用 video_transcript 获取字幕
+2. 在字幕中找到答案，记录对应的时间戳（秒数）
+3. 创建 evidence_type="video" 的可验证引用（verifaible_cite），包含 timestamp 参数
+4. 在最终回答中包含具体答案和 [@v:ID] 引用标记`;
+  }
+
   return `请从以下网页获取数据并创建可验证引用：
 
 URL：${tc.url}
