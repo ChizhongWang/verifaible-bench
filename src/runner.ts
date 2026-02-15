@@ -88,15 +88,6 @@ verifaible_web_search（搜索）、web_fetch（获取网页内容）、analyze_
    - quoted_text = 字幕原文
    - anchor = 关键短语
 
-## 路径 D：YouTube 原生搜索 + 字幕
-
-当需要在 YouTube 上搜索视频时：
-
-1. 用 analyze_page 分析 youtube.com 首页（或直接构造搜索 URL）
-2. 用 test_action_steps 在 YouTube 搜索结果页提取目标视频 URL
-3. 调用 video_transcript 获取字幕
-4. verifaible_cite 创建引用
-
 ## 工具详解
 
 ### 1. analyze_page — 侦察（每个 URL 最多调 1 次）
