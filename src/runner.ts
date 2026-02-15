@@ -853,20 +853,23 @@ async function main() {
       const avgAns = rows.reduce((s, r) => s + (r.score?.answerCorrect ?? 0), 0) / rows.length;
       const citeRate = rows.filter((r) => r.score?.citationCreated).length / rows.length;
       const refRate = rows.filter((r) => r.score?.citationInText).length / rows.length;
+      const avgTurns = rows.reduce((s, r) => s + r.roundTrips, 0) / rows.length;
+      const avgTools = rows.reduce((s, r) => s + r.toolCalls, 0) / rows.length;
       const avgTokens = rows.reduce((s, r) => s + r.inputTokens + r.outputTokens, 0) / rows.length;
       const avgTime = rows.reduce((s, r) => s + r.durationMs, 0) / rows.length;
+      const successRate = rows.filter((r) => (r.score?.totalScore ?? 0) >= 80).length;
 
       console.log(
         padRight(`AVG ${model}`, 25) +
-          padRight(`(${rows.length} runs)`, 18) +
+          padRight(`(${successRate}/${rows.length} pass)`, 18) +
           padRight('', 12) +
           padRight(`${(avgAns * 100).toFixed(0)}%`, 6) +
           padRight(`${(citeRate * 100).toFixed(0)}%`, 6) +
           padRight(`${(refRate * 100).toFixed(0)}%`, 5) +
           padRight('', 6) +
           padRight(`${avgScore.toFixed(1)}`, 7) +
-          padRight('', 6) +
-          padRight('', 6) +
+          padRight(`${avgTurns.toFixed(1)}`, 6) +
+          padRight(`${avgTools.toFixed(1)}`, 6) +
           padRight(`~${Math.round(avgTokens)}`, 14) +
           padRight(formatDuration(avgTime), 8),
       );
