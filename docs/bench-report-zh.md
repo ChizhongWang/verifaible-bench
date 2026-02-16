@@ -1,6 +1,6 @@
 # VerifAIble Bench: 评测大语言模型从真实网页采集可验证证据的能力
 
-> **VerifAIble Bench v2.0 · batch_001 评测报告**
+> **VerifAIble Bench 评测报告**
 >
 > 发布日期：2026 年 2 月
 
@@ -41,7 +41,7 @@
 
 ### 2.1 测试集构成
 
-VerifAIble Bench v2.0 包含 **21 个测试用例**，分布于五大类别：
+VerifAIble Bench 包含 **21 个测试用例**，分布于五大类别：
 
 | 类别 | 用例数 | 说明 | 难度 |
 |------|--------|------|------|
@@ -114,7 +114,6 @@ else:
 | 温度 | 0.3 |
 | 最大轮次 | 30 |
 | 会话隔离 | 每个 case 独立会话，无状态共享 |
-| 运行批次 | batch_001 |
 
 ---
 
@@ -327,4 +326,4 @@ R1 将大量计算资源用于生成 CoT 推理文本，但这些推理并未转
 
 ---
 
-*本报告基于 VerifAIble Bench v2.0 · batch_001 的实验数据自动生成。完整数据集和代码开源于 [verifaible-bench](https://github.com/verifaible/verifaible-bench) 仓库。*
+*完整数据集和代码开源于 [verifaible-bench](https://github.com/verifaible/verifaible-bench) 仓库。*
