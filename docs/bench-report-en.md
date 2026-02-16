@@ -1,6 +1,6 @@
 # VerifAIble Bench: Evaluating LLM Agents on Verifiable Evidence Collection from Real-World Web Sources
 
-> **VerifAIble Bench v2.0 · batch_001 Evaluation Report**
+> **VerifAIble Bench Evaluation Report**
 >
 > Published: February 2026
 
@@ -41,7 +41,7 @@ Unlike traditional RAG benchmarks, VerifAIble Bench requires models not only to 
 
 ### 2.1 Test Set Composition
 
-VerifAIble Bench v2.0 contains **21 test cases** distributed across five categories:
+VerifAIble Bench contains **21 test cases** distributed across five categories:
 
 | Category | Cases | Description | Difficulty |
 |----------|-------|-------------|------------|
@@ -114,7 +114,6 @@ This results in only three possible scores per case: **100** (perfect), **80** (
 | Temperature | 0.3 |
 | Max Round Trips | 30 |
 | Session Isolation | Independent session per case, no shared state |
-| Run Batch | batch_001 |
 
 ---
 
@@ -327,4 +326,4 @@ R1 allocates substantial computational resources to generating CoT reasoning tex
 
 ---
 
-*This report is based on experimental data from VerifAIble Bench v2.0 · batch_001. The complete dataset and code are open-sourced in the [verifaible-bench](https://github.com/verifaible/verifaible-bench) repository.*
+*The complete dataset and code are open-sourced in the [verifaible-bench](https://github.com/verifaible/verifaible-bench) repository.*
