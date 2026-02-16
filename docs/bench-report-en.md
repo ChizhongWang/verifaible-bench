@@ -8,7 +8,7 @@
 
 ## Abstract
 
-Large Language Models (LLMs) excel at generative tasks, yet their tendency to "hallucinate" severely limits adoption in high-stakes domains. We introduce **VerifAIble Bench**—the first end-to-end benchmark for evaluating LLM Agents on *verifiable evidence collection*. The benchmark comprises **21 test cases** spanning static text, HTML tables, JavaScript-rendered dynamic pages, PDF documents, and video transcripts, drawn from financial regulatory portals in China and the United States. We evaluate 5 models (GLM-5, Kimi-K2.5, MiniMax-M2.5, Qwen-Plus, DeepSeek-R1) using an all-or-nothing gated scoring system across four dimensions: answer correctness, citation creation, citation embedding, and evidence type matching. Results show that **GLM-5 achieves a perfect score of 2,100**, Kimi-K2.5 and MiniMax-M2.5 tie at 1,680 (average 80.0), Qwen-Plus at 1,180 (average 56.2), and DeepSeek-R1 trails at 1,080 (average 51.4). Dynamic page interaction emerges as the dominant differentiator across models. Cost analysis based on OpenRouter API pricing reveals that GLM-5 not only scores highest but also costs the least ($0.64 total), with Qwen-Plus as the 2nd cheapest at $0.41. GLM-5 achieves a cost-efficiency (score/dollar) **3.4× higher** than the lowest-ranked DeepSeek-R1. All models complete the full 21-case benchmark for under $1.20, validating the economic feasibility of agent-based evidence collection at scale.
+Large Language Models (LLMs) excel at generative tasks, yet their tendency to "hallucinate" severely limits adoption in high-stakes domains. We introduce **VerifAIble Bench**—the first end-to-end benchmark for evaluating LLM Agents on *verifiable evidence collection*. The benchmark comprises **21 test cases** spanning static text, HTML tables, JavaScript-rendered dynamic pages, PDF documents, and video transcripts, drawn from financial regulatory portals in China and the United States. We evaluate 5 models (GLM-5, Kimi-K2.5, MiniMax-M2.5, Qwen3.5-Plus, DeepSeek-R1) using an all-or-nothing gated scoring system across four dimensions: answer correctness, citation creation, citation embedding, and evidence type matching. Results show that **GLM-5 achieves a perfect score of 2,100**, Kimi-K2.5 and MiniMax-M2.5 tie at 1,680 (average 80.0), Qwen3.5-Plus at 1,180 (average 56.2), and DeepSeek-R1 trails at 1,080 (average 51.4). Dynamic page interaction emerges as the dominant differentiator across models. Cost analysis based on OpenRouter API pricing reveals that GLM-5 not only scores highest but also costs the least ($0.64 total), with Qwen3.5-Plus as the 2nd cheapest at $0.41. GLM-5 achieves a cost-efficiency (score/dollar) **3.4× higher** than the lowest-ranked DeepSeek-R1. All models complete the full 21-case benchmark for under $1.20, validating the economic feasibility of agent-based evidence collection at scale.
 
 ---
 
@@ -126,10 +126,10 @@ Five LLMs accessible via OpenRouter were selected for this evaluation:
 | **GLM-5** | Zhipu AI (Z-AI) | 744B / 40B (MoE) | Next-generation general-purpose model with strong tool-calling capabilities |
 | **Kimi-K2.5** | Moonshot AI | 1T / 32B (MoE) | Excels at long-context understanding with multimodal support |
 | **MiniMax-M2.5** | MiniMax | 230B / 10B (MoE) | Cost-effective model with large context window |
-| **Qwen-Plus** | Alibaba Cloud (Qwen) | Undisclosed† | General-purpose model with efficient token usage |
+| **Qwen3.5-Plus** | Alibaba Cloud (Qwen) | Undisclosed† | General-purpose model with efficient token usage |
 | **DeepSeek-R1** | DeepSeek | 671B / 37B (MoE) | Reasoning-specialized model with deep Chain-of-Thought inference |
 
-> † Qwen-Plus parameter count is not officially disclosed. The open-source Qwen3.5 uses a 397B / 17B MoE architecture for reference.
+> † Qwen3.5-Plus parameter count is not officially disclosed. The open-source Qwen3.5 uses a 397B / 17B MoE architecture for reference.
 
 ---
 
@@ -142,14 +142,14 @@ Five LLMs accessible via OpenRouter were selected for this evaluation:
 | 🥇 | **GLM-5** | **2,100** | **100.0** | **21/21** | **21/21** | 7.7 | 6.7 | 55.7 min | **$0.64** |
 | 🥈 | **MiniMax-M2.5** | 1,680 | 80.0 | 17/21 | 16/21 | 10.6 | 9.7 | 71.3 min | $1.10 |
 | 🥈 | **Kimi-K2.5** | 1,680 | 80.0 | 17/21 | 16/21 | 8.0 | 7.0 | 60.6 min | $0.73 |
-| 4 | **Qwen-Plus** | 1,180 | 56.2 | 12/21 | 11/21 | 4.5 | 3.5 | 17.6 min | $0.41 |
+| 4 | **Qwen3.5-Plus** | 1,180 | 56.2 | 12/21 | 11/21 | 4.5 | 3.5 | 17.6 min | $0.41 |
 | 5 | DeepSeek-R1 | 1,080 | 51.4 | 11/21 | 10/21 | 5.0 | 4.0 | 115.0 min | $1.11 |
 
 > **Note:** Pass = cases with score > 0; Full = cases with score = 100.
 
 ### 4.2 Category Analysis
 
-| Category | Cases | GLM-5 | MiniMax-M2.5 | Kimi-K2.5 | Qwen-Plus | DeepSeek-R1 |
+| Category | Cases | GLM-5 | MiniMax-M2.5 | Kimi-K2.5 | Qwen3.5-Plus | DeepSeek-R1 |
 |----------|-------|-------|-------------|-----------|-----------|-------------|
 | Static Text | 6 | **600** (100%) | 580 (96.7%) | **600** (100%) | **600** (100%) | **600** (100%) |
 | Static Table | 7 | **700** (100%) | **700** (100%) | 600 (85.7%) | 480 (68.6%) | 580 (82.9%) |
@@ -163,7 +163,7 @@ Five LLMs accessible via OpenRouter were selected for this evaluation:
 - **Dynamic pages are the dominant differentiator**: Only GLM-5 completed all 4 dynamic cases; other models scored 0%–25%
 - **Video comprehension**: All models except DeepSeek-R1 successfully utilized the `video_transcript` tool
 - **DeepSeek-R1 fails across all non-static categories**: Zero scores on all 8 dynamic, PDF, and video cases
-- **Qwen-Plus matches DeepSeek-R1's weakness in dynamic tasks**: Both score 0% on dynamic and PDF cases, but Qwen-Plus achieves a higher overall score through stronger table and video performance
+- **Qwen3.5-Plus matches DeepSeek-R1's weakness in dynamic tasks**: Both score 0% on dynamic and PDF cases, but Qwen3.5-Plus achieves a higher overall score through stronger table and video performance
 
 ### 4.3 Token Usage and Efficiency Analysis
 
@@ -172,7 +172,7 @@ Five LLMs accessible via OpenRouter were selected for this evaluation:
 | GLM-5 | 1.87M | 31.5K | 1.90M | 1.7% |
 | MiniMax-M2.5 | 3.45M | 54.4K | 3.51M | 1.6% |
 | Kimi-K2.5 | 2.65M | 39.8K | 2.70M | 1.5% |
-| Qwen-Plus | 0.95M | 12.5K | 0.96M | 1.3% |
+| Qwen3.5-Plus | 0.95M | 12.5K | 0.96M | 1.3% |
 | DeepSeek-R1 | 1.02M | 160.2K | 1.18M | 15.7% |
 
 **Efficiency Metrics:**
@@ -182,7 +182,7 @@ Five LLMs accessible via OpenRouter were selected for this evaluation:
 | **GLM-5** | 2,100 | 1.90M | 55.7 min | $0.64 | **11.1** | **37.7** | **3,281** |
 | MiniMax-M2.5 | 1,680 | 3.51M | 71.3 min | $1.10 | 4.8 | 23.6 | 1,527 |
 | Kimi-K2.5 | 1,680 | 2.70M | 60.6 min | $0.73 | 6.2 | 27.7 | 2,301 |
-| Qwen-Plus | 1,180 | 0.96M | 17.6 min | $0.41 | 12.3 | 67.0 | 2,878 |
+| Qwen3.5-Plus | 1,180 | 0.96M | 17.6 min | $0.41 | 12.3 | 67.0 | 2,878 |
 | DeepSeek-R1 | 1,080 | 1.18M | 115.0 min | $1.11 | 9.2 | 9.4 | 971 |
 
 > GLM-5 leads significantly across all three efficiency dimensions: score-per-token, score-per-minute, and score-per-dollar. API costs computed using OpenRouter pricing as of February 2026.
@@ -194,7 +194,7 @@ Five LLMs accessible via OpenRouter were selected for this evaluation:
 | GLM-5 | 7.7 | 6.7 | 88.9K | 1.5K | 2m39s |
 | MiniMax-M2.5 | 10.6 | 9.7 | 164.4K | 2.6K | 3m24s |
 | Kimi-K2.5 | 8.0 | 7.0 | 126.4K | 1.9K | 2m53s |
-| Qwen-Plus | 4.5 | 3.5 | 45.1K | 595 | 50s |
+| Qwen3.5-Plus | 4.5 | 3.5 | 45.1K | 595 | 50s |
 | DeepSeek-R1 | 5.0 | 4.0 | 48.4K | 7.6K | 5m29s |
 
 **The DeepSeek-R1 CoT Paradox:**
@@ -215,7 +215,7 @@ Using OpenRouter pricing as of February 2026, we computed the total API cost for
 | GLM-5 | $0.30 | $2.55 |
 | Kimi-K2.5 | $0.23 | $3.00 |
 | MiniMax-M2.5 | $0.30 | $1.20 |
-| Qwen-Plus | $0.40 | $2.40 |
+| Qwen3.5-Plus | $0.40 | $2.40 |
 | DeepSeek-R1 | $0.70 | $2.50 |
 
 **Cost Breakdown by Model:**
@@ -225,7 +225,7 @@ Using OpenRouter pricing as of February 2026, we computed the total API cost for
 | **GLM-5** | 1.87M | 31.5K | $0.56 | $0.08 | **$0.64** | $0.031 |
 | Kimi-K2.5 | 2.65M | 39.8K | $0.61 | $0.12 | **$0.73** | $0.035 |
 | MiniMax-M2.5 | 3.45M | 54.4K | $1.04 | $0.07 | **$1.10** | $0.052 |
-| Qwen-Plus | 0.95M | 12.5K | $0.38 | $0.03 | **$0.41** | $0.020 |
+| Qwen3.5-Plus | 0.95M | 12.5K | $0.38 | $0.03 | **$0.41** | $0.020 |
 | DeepSeek-R1 | 1.02M | 160.2K | $0.71 | $0.40 | **$1.11** | $0.053 |
 
 **Cost-Efficiency Rankings:**
@@ -233,7 +233,7 @@ Using OpenRouter pricing as of February 2026, we computed the total API cost for
 | Rank | Model | Score | Total Cost | Score/$ | Cost/Point |
 |------|-------|-------|-----------|---------|-----------|
 | 🥇 | **GLM-5** | 2,100 | $0.64 | **3,281** | $0.0003 |
-| 🥈 | Qwen-Plus | 1,180 | $0.41 | 2,878 | $0.0003 |
+| 🥈 | Qwen3.5-Plus | 1,180 | $0.41 | 2,878 | $0.0003 |
 | 🥉 | Kimi-K2.5 | 1,680 | $0.73 | 2,301 | $0.0004 |
 | 4 | MiniMax-M2.5 | 1,680 | $1.10 | 1,527 | $0.0007 |
 | 5 | DeepSeek-R1 | 1,080 | $1.11 | 971 | $0.0010 |
@@ -241,7 +241,7 @@ Using OpenRouter pricing as of February 2026, we computed the total API cost for
 **Key Findings:**
 
 - **GLM-5 achieves the lowest cost and highest cost-efficiency**: It completes all 21 tests for just $0.64 with a perfect score, delivering a score-per-dollar ratio **3.4× higher** than DeepSeek-R1
-- **Qwen-Plus achieves 2nd-best cost-efficiency despite ranking 4th in score**: At just $0.41 total, its low token consumption yields a score/$ of 2,878—close to GLM-5 and higher than Kimi-K2.5
+- **Qwen3.5-Plus achieves 2nd-best cost-efficiency despite ranking 4th in score**: At just $0.41 total, its low token consumption yields a score/$ of 2,878—close to GLM-5 and higher than Kimi-K2.5
 - **Input tokens dominate costs**: For GLM-5, Kimi-K2.5, and MiniMax-M2.5, input costs account for **84%–94%** of total spend, meaning reducing conversation rounds (and thus context accumulation) is the most effective cost optimization strategy
 - **DeepSeek-R1's output cost anomaly**: Despite consuming the fewest input tokens (1.02M), its extensive CoT reasoning text pushes output costs to **36%** of total spend—far above the 6%–16% range of other models
 - **Lower unit price ≠ lower total cost**: MiniMax-M2.5 has the cheapest output rate ($1.20/M), yet its heavy input token consumption (3.45M) results in the third-highest total cost
@@ -263,7 +263,7 @@ GLM-5 scored 100 on all 21 test cases. Key success factors include:
 
 The 4 dynamic page cases from the Shanghai Stock Exchange (sse.com.cn) proved to be the most discriminating tests in the entire benchmark:
 
-| Case | Task | GLM-5 | MiniMax | Kimi | Qwen-Plus | R1 |
+| Case | Task | GLM-5 | MiniMax | Kimi | Qwen3.5-Plus | R1 |
 |------|------|-------|---------|------|-----------|-----|
 | cn_dynamic_001 | Bond transaction count (date filter) | ✅ 100 | ❌ 0 | ✅ 100 | ❌ 0 | ❌ 0 |
 | cn_dynamic_002 | Top market cap stock ratio (date filter) | ✅ 100 | ❌ 0 | ❌ 0 | ❌ 0 | ❌ 0 |
@@ -274,7 +274,7 @@ The 4 dynamic page cases from the Shanghai Stock Exchange (sse.com.cn) proved to
 - **Date setting failure**: MiniMax and Kimi retrieved data for the wrong date in cn_dynamic_002–004 (e.g., confusing 2025-02-10 with 2026-02-10), indicating they failed to correctly operate the page's date filter components
 - **Round trip exhaustion**: MiniMax exhausted the 30-round limit in cn_dynamic_001 and cn_dynamic_003 without completing the task
 - **Premature termination**: DeepSeek-R1 typically stopped tool calls after 5–10 rounds, even without obtaining the correct answer
-- **Dynamic interaction failure**: Qwen-Plus failed all 4 dynamic cases, unable to operate date filters on SSE pages
+- **Dynamic interaction failure**: Qwen3.5-Plus failed all 4 dynamic cases, unable to operate date filters on SSE pages
 
 ### 5.3 The Reasoning Model Paradox of DeepSeek-R1
 
@@ -364,12 +364,12 @@ R1 allocates substantial computational resources to generating CoT reasoning tex
 | cn_dynamic_pdf_001 | Kimi | Evidence type mismatch: correct answer but cited as text instead of pdf (scored 80) |
 | cn_dynamic_pdf_002 | R1 | Navigation failure: could not find target PDF in announcements page |
 | us_text_003 | MiniMax | Evidence type mismatch: cited as pdf instead of text (scored 80) |
-| cn_table_002 | Qwen-Plus | Wrong answer: failed to extract Zhengzhou used housing price YoY data |
-| cn_table_003 | Qwen-Plus | No citation created: answer correct but did not call `verifaible_cite` (scored 0) |
-| cn_table_004 | Qwen-Plus | Evidence type mismatch: extracted from body text instead of table (scored 80) |
-| cn_dynamic_001–004 | Qwen-Plus | Dynamic interaction failure: unable to operate date filters on SSE pages |
-| cn_dynamic_pdf_001–002 | Qwen-Plus | Navigation failure: could not find and open target PDFs |
-| video_001 | Qwen-Plus | Answer matching failure: produced related content but scoring engine failed to match expected phrase |
+| cn_table_002 | Qwen3.5-Plus | Wrong answer: failed to extract Zhengzhou used housing price YoY data |
+| cn_table_003 | Qwen3.5-Plus | No citation created: answer correct but did not call `verifaible_cite` (scored 0) |
+| cn_table_004 | Qwen3.5-Plus | Evidence type mismatch: extracted from body text instead of table (scored 80) |
+| cn_dynamic_001–004 | Qwen3.5-Plus | Dynamic interaction failure: unable to operate date filters on SSE pages |
+| cn_dynamic_pdf_001–002 | Qwen3.5-Plus | Navigation failure: could not find and open target PDFs |
+| video_001 | Qwen3.5-Plus | Answer matching failure: produced related content but scoring engine failed to match expected phrase |
 | video_001 | R1 | Answer matching failure: included correct quote but scoring engine failed to match full phrase |
 | video_002 | R1 | No citation created: answered the question but did not call `verifaible_cite` |
 
@@ -380,7 +380,7 @@ R1 allocates substantial computational resources to generating CoT reasoning tex
 | GLM-5 | 1,866,536 | 31,507 | 1,898,043 | 88,883 | 1,500 |
 | MiniMax-M2.5 | 3,453,171 | 54,435 | 3,507,606 | 164,437 | 2,592 |
 | Kimi-K2.5 | 2,654,870 | 39,759 | 2,694,629 | 126,422 | 1,893 |
-| Qwen-Plus | 947,673 | 12,492 | 960,165 | 45,127 | 595 |
+| Qwen3.5-Plus | 947,673 | 12,492 | 960,165 | 45,127 | 595 |
 | DeepSeek-R1 | 1,016,392 | 160,241 | 1,176,633 | 48,400 | 7,631 |
 
 ---
