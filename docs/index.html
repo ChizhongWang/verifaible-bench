@@ -1,0 +1,1362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VerifAIble Bench - Research | VerifAIble</title>
+    <meta name="description" content="VerifAIble Bench: Evaluating LLM Agents on Verifiable Evidence Collection from Real-World Web Sources. Benchmark report for GLM-5, Kimi-K2.5, MiniMax-M2.5, and DeepSeek-R1.">
+    <link rel="canonical" href="https://research.verifaible.space/verifaible-bench/">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://research.verifaible.space/verifaible-bench/">
+    <meta property="og:title" content="VerifAIble Bench: Evaluating LLM Agents on Verifiable Evidence Collection">
+    <meta property="og:description" content="First end-to-end benchmark for LLM Agent verifiable evidence collection. 4 models × 21 cases covering text, tables, dynamic pages, PDFs, and video.">
+    <meta property="og:site_name" content="VerifAIble">
+
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --primary-blue: #4A90E2;
+            --light-blue: #E8F4FD;
+            --dark-green: #2E7D32;
+            --medium-green: #4CAF50;
+            --light-green: #E8F5E9;
+            --text-dark: #1A1A1A;
+            --text-gray: #666666;
+            --white: #FFFFFF;
+            --border: #e5e7eb;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            color: var(--text-dark);
+            line-height: 1.6;
+            background: var(--white);
+        }
+
+        /* Navigation */
+        nav {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem 5%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 1000;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        }
+
+        .logo a { display: flex; align-items: center; text-decoration: none; }
+        .logo img { height: 50px; width: auto; }
+
+        .nav-right {
+            display: flex;
+            align-items: center;
+            gap: 2rem;
+        }
+
+        .nav-link {
+            text-decoration: none;
+            color: var(--text-dark);
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.2s;
+            padding: 0.4rem 0.8rem;
+            border-radius: 8px;
+            border: 1px solid transparent;
+        }
+
+        .nav-link:hover, .nav-link.active {
+            color: var(--primary-blue);
+            background: var(--light-blue);
+            border-color: #cce5f6;
+        }
+
+        .github-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            text-decoration: none;
+            color: var(--text-dark);
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.2s;
+            padding: 0.4rem 0.8rem;
+            border-radius: 8px;
+            border: 1px solid transparent;
+        }
+
+        .github-link:hover {
+            color: var(--primary-blue);
+            background: var(--light-blue);
+            border-color: #cce5f6;
+        }
+
+        .github-star-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #57606a;
+        }
+
+        .github-star-badge svg { fill: #e3b341; }
+
+        /* Language Toggle */
+        .lang-toggle {
+            display: inline-flex;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+
+        .lang-toggle button {
+            background: transparent;
+            border: none;
+            padding: 0.4rem 0.9rem;
+            font-size: 0.85rem;
+            font-weight: 500;
+            cursor: pointer;
+            color: var(--text-gray);
+            transition: all 0.2s;
+        }
+
+        .lang-toggle button.active {
+            background: var(--primary-blue);
+            color: var(--white);
+        }
+
+        .lang-toggle button:hover:not(.active) {
+            background: var(--light-blue);
+        }
+
+        /* Article Layout */
+        .article-container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 100px 2rem 80px;
+        }
+
+        .article-header {
+            text-align: center;
+            margin-bottom: 3rem;
+            padding-bottom: 2rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .article-header h1 {
+            font-size: 1.8rem;
+            line-height: 1.3;
+            margin-bottom: 1rem;
+            color: var(--text-dark);
+        }
+
+        .article-meta {
+            color: var(--text-gray);
+            font-size: 0.9rem;
+        }
+
+        .article-meta .badge {
+            display: inline-block;
+            background: var(--light-blue);
+            color: var(--primary-blue);
+            padding: 0.2rem 0.6rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin-right: 0.5rem;
+        }
+
+        /* Prose */
+        .prose h2 {
+            font-size: 1.5rem;
+            margin-top: 3rem;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid var(--light-blue);
+            color: var(--text-dark);
+        }
+
+        .prose h3 {
+            font-size: 1.2rem;
+            margin-top: 2rem;
+            margin-bottom: 0.75rem;
+            color: var(--text-dark);
+        }
+
+        .prose h4 {
+            font-size: 1.05rem;
+            margin-top: 1.5rem;
+            margin-bottom: 0.5rem;
+            color: var(--text-dark);
+        }
+
+        .prose p {
+            margin-bottom: 1rem;
+            line-height: 1.8;
+            color: #333;
+        }
+
+        .prose ul, .prose ol {
+            margin-bottom: 1rem;
+            padding-left: 1.5rem;
+        }
+
+        .prose li {
+            margin-bottom: 0.3rem;
+            line-height: 1.7;
+        }
+
+        .prose strong {
+            font-weight: 600;
+        }
+
+        .prose blockquote {
+            border-left: 4px solid var(--primary-blue);
+            padding: 0.75rem 1.25rem;
+            margin: 1.5rem 0;
+            background: var(--light-blue);
+            border-radius: 0 8px 8px 0;
+            color: #444;
+        }
+
+        .prose blockquote p:last-child { margin-bottom: 0; }
+
+        .prose code {
+            background: #f4f4f5;
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.88em;
+            font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+        }
+
+        .prose pre {
+            background: #1e1e2e;
+            color: #cdd6f4;
+            padding: 1.25rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 1.5rem 0;
+            font-size: 0.88rem;
+            line-height: 1.6;
+        }
+
+        .prose pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+
+        .prose hr {
+            border: none;
+            border-top: 1px solid var(--border);
+            margin: 2.5rem 0;
+        }
+
+        /* Tables */
+        .table-wrap {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            margin: 1.5rem 0;
+        }
+
+        .prose table {
+            border-collapse: collapse;
+            margin: 0 auto;
+            font-size: 0.9rem;
+        }
+
+        .prose thead {
+            background: #f8fafc;
+        }
+
+        .prose th {
+            padding: 0.75rem 0.75rem;
+            text-align: left;
+            font-weight: 600;
+            color: var(--text-dark);
+            border-bottom: 2px solid var(--border);
+            white-space: nowrap;
+        }
+
+        .prose td {
+            padding: 0.6rem 0.75rem;
+            border-bottom: 1px solid #f0f0f0;
+            white-space: nowrap;
+        }
+
+        .prose tbody tr:hover {
+            background: #fafbfc;
+        }
+
+        .prose .score-0 { color: #dc2626; font-weight: 700; }
+        .prose .score-80 { color: #d97706; font-weight: 600; }
+        .prose .score-100 { color: var(--dark-green); }
+        .prose .score-perfect { color: var(--dark-green); font-weight: 700; }
+
+        /* Summary Cards */
+        .summary-cards {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+            margin: 2rem 0;
+        }
+
+        .summary-card {
+            text-align: center;
+            padding: 1.25rem;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+        }
+
+        .summary-card.gold { background: linear-gradient(135deg, #fef3c7, #fde68a); border-color: #fbbf24; }
+        .summary-card.silver { background: linear-gradient(135deg, #f0f4ff, #e0e7ff); border-color: #a5b4fc; }
+
+        .summary-card .model-name {
+            font-size: 0.85rem;
+            color: var(--text-gray);
+            margin-bottom: 0.25rem;
+        }
+
+        .summary-card .model-score {
+            font-size: 2rem;
+            font-weight: 800;
+            color: var(--text-dark);
+        }
+
+        .summary-card .model-detail {
+            font-size: 0.8rem;
+            color: var(--text-gray);
+            margin-top: 0.25rem;
+        }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 2rem 5%;
+            color: var(--text-gray);
+            font-size: 0.85rem;
+            border-top: 1px solid var(--border);
+        }
+
+        /* ── Bar Charts ── */
+        .bar-chart {
+            margin: 2.5rem 0;
+            padding: 2rem 0 1rem;
+        }
+
+        .bar-chart-title {
+            text-align: center;
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--text-dark);
+            margin-bottom: 2rem;
+        }
+
+        .bar-chart-bars {
+            display: flex;
+            align-items: stretch;
+            justify-content: center;
+            gap: 1.5rem;
+            height: 320px;
+            padding: 0 1rem;
+        }
+
+        .bar-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            flex: 1;
+            max-width: 120px;
+        }
+
+        .bar-value {
+            position: absolute;
+            top: 6px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            font-size: 1rem;
+            font-weight: 800;
+            color: #fff;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+        }
+
+        .bar-pillar-area {
+            flex: 1;
+            width: 100%;
+            display: flex;
+            align-items: flex-end;
+        }
+
+        .bar-pillar {
+            width: 100%;
+            border-radius: 12px 12px 4px 4px;
+            min-height: 8px;
+            position: relative;
+            transition: height 0.6s ease;
+        }
+
+        .bar-logo {
+            margin-top: 0.6rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .bar-logo svg {
+            width: 28px;
+            height: 28px;
+        }
+
+        .bar-label {
+            margin-top: 0.25rem;
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: var(--text-gray);
+            text-align: center;
+            white-space: nowrap;
+        }
+
+        /* Bar colors — VerifAIble brand gradient (teal→blue) */
+        .bar-pillar { background: linear-gradient(180deg, #4A90E2, #22A88E); }
+
+        /* Grouped bar chart */
+        .bar-chart-grouped {
+            margin: 2.5rem 0;
+            padding: 2rem 0 1rem;
+        }
+
+        .bar-group-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 0.6rem;
+            gap: 0.75rem;
+        }
+
+        .bar-group-label {
+            width: 110px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: var(--text-gray);
+            text-align: right;
+            flex-shrink: 0;
+        }
+
+        .bar-group-tracks {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+
+        .bar-h {
+            height: 18px;
+            border-radius: 3px 9px 9px 3px;
+            display: flex;
+            align-items: center;
+            padding-left: 8px;
+            font-size: 0.72rem;
+            font-weight: 700;
+            color: #fff;
+            transition: width 0.6s ease;
+        }
+
+        .bar-h.glm  { background: linear-gradient(90deg, #22A88E, #2E9DA3); }
+        .bar-h.mini { background: linear-gradient(90deg, #3498B0, #3E8EC4); }
+        .bar-h.kimi { background: linear-gradient(90deg, #4286CC, #4A80DC); }
+        .bar-h.r1   { background: linear-gradient(90deg, #93CFC2, #A3C4E4); color: #2E6858; }
+
+        .bar-h-zero {
+            height: 18px;
+            border-radius: 3px 9px 9px 3px;
+            background: #fee2e2;
+            width: 40px !important;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.72rem;
+            font-weight: 700;
+            color: #dc2626;
+        }
+
+        .bar-legend {
+            display: flex;
+            justify-content: center;
+            gap: 1.5rem;
+            margin-top: 1rem;
+            font-size: 0.78rem;
+            color: var(--text-gray);
+        }
+
+        .bar-legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+        }
+
+        .bar-legend-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 3px;
+        }
+
+        .dot-glm  { background: #22A88E; }
+        .dot-mini { background: #3498B0; }
+        .dot-kimi { background: #4286CC; }
+        .dot-r1   { background: #93CFC2; }
+
+        /* Hidden content */
+        .lang-content { display: none; }
+        .lang-content.active { display: block; }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .article-container { padding: 80px 1rem 40px; }
+            .article-header h1 { font-size: 1.3rem; }
+            .prose h2 { font-size: 1.2rem; }
+            .prose h3 { font-size: 1.05rem; }
+            .prose p, .prose li { font-size: 0.9rem; }
+            .summary-cards { grid-template-columns: repeat(2, 1fr); }
+            nav { padding: 0.75rem 3%; }
+            .nav-right { gap: 0.75rem; }
+            .github-link span { display: none; }
+            .logo img { height: 36px; }
+            .bar-chart-bars { gap: 1rem; height: 280px; }
+            .bar-value { font-size: 0.85rem; }
+            .bar-logo svg { width: 24px; height: 24px; }
+            .bar-group-label { width: 70px; font-size: 0.72rem; }
+            .bar-h { height: 15px; font-size: 0.65rem; }
+            .bar-h-zero { height: 15px; font-size: 0.65rem; }
+            .bar-legend { gap: 0.8rem; font-size: 0.7rem; }
+            .prose th, .prose td { padding: 0.5rem 0.4rem; font-size: 0.8rem; }
+        }
+
+        @media (max-width: 480px) {
+            .article-container { padding: 70px 0.75rem 30px; }
+            .article-header h1 { font-size: 1.05rem; }
+            .prose h2 { font-size: 1rem; margin-top: 2rem; }
+            .prose h3 { font-size: 0.92rem; }
+            .prose p, .prose li { font-size: 0.85rem; line-height: 1.6; }
+            .summary-cards { grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+            .summary-card { padding: 0.75rem; }
+            nav { padding: 0.5rem 2%; }
+            .nav-right { gap: 0.4rem; }
+            .nav-link { font-size: 0.78rem; padding: 0.25rem 0.5rem; }
+            .lang-toggle button { padding: 0.25rem 0.5rem; font-size: 0.75rem; }
+            .logo img { height: 28px; }
+            .bar-chart { padding: 1.5rem 0 0.5rem; }
+            .bar-chart-bars { gap: 0.4rem; height: 220px; }
+            .bar-chart-title { font-size: 0.9rem; margin-bottom: 1.2rem; }
+            .bar-item { max-width: 70px; }
+            .bar-label { font-size: 0.65rem; }
+            .bar-logo svg { width: 18px; height: 18px; }
+            .bar-logo { margin-top: 0.35rem; }
+            .bar-value { font-size: 0.7rem; top: 3px; }
+            .bar-group-label { width: 55px; font-size: 0.62rem; }
+            .bar-h { height: 12px; font-size: 0.55rem; padding-left: 4px; }
+            .bar-h-zero { height: 12px; font-size: 0.55rem; width: 28px !important; }
+            .bar-legend { gap: 0.6rem; font-size: 0.65rem; }
+            .prose th, .prose td { padding: 0.35rem 0.3rem; font-size: 0.7rem; }
+            .prose blockquote { padding: 0.5rem 0.75rem; font-size: 0.85rem; }
+            footer { font-size: 0.75rem; padding: 1rem; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav>
+        <div class="logo">
+            <a href="https://research.verifaible.space/"><img src="图片9.png" alt="VerifAIble Logo"></a>
+        </div>
+        <div class="nav-right">
+            <a href="https://research.verifaible.space/" class="nav-link active">Research</a>
+            <a href="https://github.com/ChizhongWang/OpenVerifAIble" target="_blank" class="github-link" title="GitHub">
+                <svg height="20" width="20" viewBox="0 0 16 16" fill="currentColor">
+                    <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
+                </svg>
+            </a>
+            <div class="lang-toggle">
+                <button class="active" onclick="switchLang('en')">EN</button>
+                <button onclick="switchLang('zh')">中文</button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="article-container">
+
+        <!-- ==================== ENGLISH VERSION ==================== -->
+        <div class="lang-content active" id="content-en">
+
+            <div class="article-header">
+                <h1>VerifAIble Bench: Evaluating LLM Agents on Verifiable Evidence Collection from Real-World Web Sources</h1>
+                <p class="article-meta">
+                    February 2026
+                </p>
+            </div>
+
+            <div class="prose">
+
+                <!-- Average Score Bar Chart -->
+                <div class="bar-chart">
+                    <div class="bar-chart-title">Average Score (out of 100)</div>
+                    <div class="bar-chart-bars">
+                        <div class="bar-item bar-glm">
+                            <div class="bar-pillar-area"><div class="bar-pillar" style="height:100%"><span class="bar-value">100</span></div></div>
+                            <div class="bar-logo"><svg viewBox="0 0 24 24"><path d="M11.991 23.503a.24.24 0 00-.244.248.24.24 0 00.244.249.24.24 0 00.245-.249.24.24 0 00-.22-.247l-.025-.001zM9.671 5.365a1.697 1.697 0 011.099 2.132l-.071.172-.016.04-.018.054c-.07.16-.104.32-.104.498-.035.71.47 1.279 1.186 1.314h.366c1.309.053 2.338 1.173 2.286 2.523-.052 1.332-1.152 2.38-2.478 2.327h-.174c-.715.018-1.274.64-1.239 1.368 0 .124.018.23.053.337.209.373.54.658.96.8.75.23 1.517-.125 1.9-.782l.018-.035c.402-.64 1.17-.96 1.92-.711.854.284 1.378 1.226 1.099 2.167a1.661 1.661 0 01-2.077 1.102 1.711 1.711 0 01-.907-.711l-.017-.035c-.2-.323-.463-.58-.851-.711l-.056-.018a1.646 1.646 0 00-1.954.746 1.66 1.66 0 01-1.065.764 1.677 1.677 0 01-1.989-1.279c-.209-.906.332-1.83 1.257-2.043a1.51 1.51 0 01.296-.035h.018c.68-.071 1.151-.622 1.116-1.333a1.307 1.307 0 00-.227-.693 2.515 2.515 0 01-.366-1.403 2.39 2.39 0 01.366-1.208c.14-.195.21-.444.227-.693.018-.71-.506-1.261-1.186-1.332l-.07-.018a1.43 1.43 0 01-.299-.07l-.05-.019a1.7 1.7 0 01-1.047-2.114 1.68 1.68 0 012.094-1.101zm-5.575 10.11c.26-.264.639-.367.994-.27.355.096.633.379.728.74.095.362-.007.748-.267 1.013-.402.41-1.053.41-1.455 0a1.062 1.062 0 010-1.482zm14.845-.294c.359-.09.738.024.992.297.254.274.344.665.237 1.025-.107.36-.396.634-.756.718-.551.128-1.1-.22-1.23-.781a1.05 1.05 0 01.757-1.26zm-.064-4.39c.314.32.49.753.49 1.206 0 .452-.176.886-.49 1.206-.315.32-.74.5-1.185.5-.444 0-.87-.18-1.184-.5a1.727 1.727 0 010-2.412 1.654 1.654 0 012.369 0zm-11.243.163c.364.484.447 1.128.218 1.691a1.665 1.665 0 01-2.188.923c-.855-.36-1.26-1.358-.907-2.228a1.68 1.68 0 011.33-1.038c.593-.08 1.183.169 1.547.652zm11.545-4.221c.368 0 .708.2.892.524.184.324.184.724 0 1.048a1.026 1.026 0 01-.892.524c-.568 0-1.03-.47-1.03-1.048 0-.579.462-1.048 1.03-1.048zm-14.358 0c.368 0 .707.2.891.524.184.324.184.724 0 1.048a1.026 1.026 0 01-.891.524c-.569 0-1.03-.47-1.03-1.048 0-.579.461-1.048 1.03-1.048zm10.031-1.475c.925 0 1.675.764 1.675 1.706s-.75 1.705-1.675 1.705-1.674-.763-1.674-1.705c0-.942.75-1.706 1.674-1.706zm-2.626-.684c.362-.082.653-.356.761-.718a1.062 1.062 0 00-.238-1.028 1.017 1.017 0 00-.996-.294c-.547.14-.881.7-.752 1.257.13.558.675.907 1.225.783zm0 16.876c.359-.087.644-.36.75-.72a1.062 1.062 0 00-.237-1.019 1.018 1.018 0 00-.985-.301 1.037 1.037 0 00-.762.717c-.108.361-.017.754.239 1.028.245.263.606.377.953.305l.043-.01zM17.19 3.5a.631.631 0 00.628-.64c0-.355-.279-.64-.628-.64a.631.631 0 00-.628.64c0 .355.28.64.628.64zm-10.38 0a.631.631 0 00.628-.64c0-.355-.28-.64-.628-.64a.631.631 0 00-.628.64c0 .355.279.64.628.64zm-5.182 7.852a.631.631 0 00-.628.64c0 .354.28.639.628.639a.63.63 0 00.627-.606l.001-.034a.62.62 0 00-.628-.64zm5.182 9.13a.631.631 0 00-.628.64c0 .355.279.64.628.64a.631.631 0 00.628-.64c0-.355-.28-.64-.628-.64zm10.38.018a.631.631 0 00-.628.64c0 .355.28.64.628.64a.631.631 0 00.628-.64c0-.355-.279-.64-.628-.64zm5.182-9.148a.631.631 0 00-.628.64c0 .354.279.639.628.639a.631.631 0 00.628-.64c0-.355-.28-.64-.628-.64zm-.384-4.992a.24.24 0 00.244-.249.24.24 0 00-.244-.249.24.24 0 00-.244.249c0 .142.122.249.244.249zM11.991.497a.24.24 0 00.245-.248A.24.24 0 0011.99 0a.24.24 0 00-.244.249c0 .133.108.236.223.247l.021.001zM2.011 6.36a.24.24 0 00.245-.249.24.24 0 00-.244-.249.24.24 0 00-.244.249.24.24 0 00.244.249zm0 11.263a.24.24 0 00-.243.248.24.24 0 00.244.249.24.24 0 00.244-.249.252.252 0 00-.244-.248zm19.995-.018a.24.24 0 00-.245.248.24.24 0 00.245.25.24.24 0 00.244-.25.252.252 0 00-.244-.248z" fill="#3859FF"/></svg></div>
+                            <div class="bar-label">GLM-5</div>
+                        </div>
+                        <div class="bar-item bar-mini">
+                            <div class="bar-pillar-area"><div class="bar-pillar" style="height:80%"><span class="bar-value">80.0</span></div></div>
+                            <div class="bar-logo"><svg viewBox="0 0 24 24"><path d="M16.278 2c1.156 0 2.093.927 2.093 2.07v12.501a.74.74 0 00.744.709.74.74 0 00.743-.709V9.099a2.06 2.06 0 012.071-2.049A2.06 2.06 0 0124 9.1v6.561a.649.649 0 01-.652.645.649.649 0 01-.653-.645V9.1a.762.762 0 00-.766-.758.762.762 0 00-.766.758v7.472a2.037 2.037 0 01-2.048 2.026 2.037 2.037 0 01-2.048-2.026v-12.5a.785.785 0 00-.788-.753.785.785 0 00-.789.752l-.001 15.904A2.037 2.037 0 0113.441 22a2.037 2.037 0 01-2.048-2.026V18.04c0-.356.292-.645.652-.645.36 0 .652.289.652.645v1.934c0 .263.142.506.372.638.23.131.514.131.744 0a.734.734 0 00.372-.638V4.07c0-1.143.937-2.07 2.093-2.07zm-5.674 0c1.156 0 2.093.927 2.093 2.07v11.523a.648.648 0 01-.652.645.648.648 0 01-.652-.645V4.07a.785.785 0 00-.789-.78.785.785 0 00-.789.78v14.013a2.06 2.06 0 01-2.07 2.048 2.06 2.06 0 01-2.071-2.048V9.1a.762.762 0 00-.766-.758.762.762 0 00-.766.758v3.8a2.06 2.06 0 01-2.071 2.049A2.06 2.06 0 010 12.9v-1.378c0-.357.292-.646.652-.646.36 0 .653.29.653.646V12.9c0 .418.343.757.766.757s.766-.339.766-.757V9.099a2.06 2.06 0 012.07-2.048 2.06 2.06 0 012.071 2.048v8.984c0 .419.343.758.767.758.423 0 .766-.339.766-.758V4.07c0-1.143.937-2.07 2.093-2.07z" fill="#F23F5D"/></svg></div>
+                            <div class="bar-label">MiniMax-M2.5</div>
+                        </div>
+                        <div class="bar-item bar-kimi">
+                            <div class="bar-pillar-area"><div class="bar-pillar" style="height:80%"><span class="bar-value">80.0</span></div></div>
+                            <div class="bar-logo"><svg viewBox="0 0 24 25" fill="none"><path d="M21.72.94c1.23 0 2.23 1 2.23 2.23s-1 2.23-2.23 2.23h-1.97a.26.26 0 01-.26-.26V3.17c0-1.23 1-2.23 2.23-2.23z" fill="#1783FF"/><path d="M9.39 13.95l8.43-8.36c.16-.16.07-.47-.14-.47h-4.54s-.1.02-.14.06L3.92 14.19c-.14.14-.35.02-.35-.21V5.39c0-.15-.1-.27-.22-.27H.22c-.12 0-.22.12-.22.27v18.53c0 .15.1.27.22.27h3.13c.12 0 .22-.12.22-.27v-3.78c0-.08.03-.16.08-.21l2.82-2.79c.07-.07.16-.08.24-.03l7.53 5.54c1.23.83 2.61 1.34 4.01 1.49.12.01.23-.11.23-.27v-3.56c0-.14-.08-.25-.19-.26-.82-.13-1.63-.45-2.35-.94l-6.52-4.72c-.14-.09-.15-.32-.03-.44z" fill="#000"/></svg></div>
+                            <div class="bar-label">Kimi-K2.5</div>
+                        </div>
+                        <div class="bar-item bar-r1">
+                            <div class="bar-pillar-area"><div class="bar-pillar" style="height:51.4%"><span class="bar-value">51.4</span></div></div>
+                            <div class="bar-logo"><svg viewBox="2 5 28 22" fill="none"><path d="m27.501 8.469c-.252-.123-.36.111-.508.23-.05.04-.093.09-.135.135-.368.395-.797.652-1.358.621-.821-.045-1.521.213-2.14.842-.132-.776-.57-1.238-1.235-1.535-.349-.155-.701-.309-.944-.645-.171-.238-.217-.504-.303-.765-.054-.159-.108-.32-.29-.348-.197-.031-.274.135-.352.273-.31.567-.43 1.192-.419 1.825.028 1.421.628 2.554 1.82 3.36.136.093.17.186.128.321-.081.278-.178.547-.264.824-.054.178-.135.217-.324.14a5.448 5.448 0 01-1.719-1.169c-.848-.82-1.614-1.726-2.57-2.435-.225-.166-.449-.32-.681-.467-.976-.95.128-1.729.383-1.82.267-.096.093-.428-.77-.424s-1.653.293-2.659.677a2.782 2.782 0 01-.46.135 9.554 9.554 0 00-2.853-.1c-1.866.21-3.356 1.092-4.452 2.6-1.315 1.81-1.625 3.87-1.246 6.018.399 2.261 1.552 4.136 3.326 5.601 1.837 1.518 3.955 2.262 6.37 2.12 1.466-.085 3.1-.282 4.942-1.842.465.23.952.322 1.762.392.623.059 1.223-.031 1.687-.127.728-.154.677-.828.414-.953-2.132-.994-1.665-.59-2.09-.916 1.084-1.285 2.717-2.619 3.356-6.94.05-.343.007-.558 0-.837-.004-.168.034-.235.228-.254a4.084 4.084 0 001.529-.47c1.382-.757 1.938-1.997 2.07-3.485.02-.227-.004-.463-.243-.582zm-12.041 13.391c-2.067-1.627-3.07-2.162-3.483-2.138-.387.021-.318.465-.233.754.089.285.205.482.368.732.113.166.19.414-.112.598-.666.414-1.823-.139-1.878-.166-1.347-.793-2.473-1.842-3.267-3.276-.765-1.38-1.21-2.861-1.284-4.441-.02-.383.093-.518.472-.586a4.692 4.692 0 011.514-.04c2.109.31 3.905 1.255 5.41 2.749.86.853 1.51 1.871 2.18 2.865.711 1.057 1.478 2.063 2.454 2.887.343.289.619.51.881.672-.792.088-2.117.107-3.022-.61zm.99-6.38a.304.304 0 11.609 0c0 .17-.136.304-.306.304a.3.3 0 01-.303-.305zm3.077 1.581c-.197.08-.394.15-.584.159a1.246 1.246 0 01-.79-.252c-.27-.227-.463-.354-.546-.752a1.752 1.752 0 01.016-.582c.07-.324-.008-.531-.235-.72-.187-.155-.422-.196-.682-.196a.551.551 0 01-.252-.078c-.108-.055-.197-.19-.112-.356.027-.053.159-.183.19-.207.352-.201.758-.135 1.134.016.349.142.611.404.99.773.388.448.457.573.678.906.174.264.333.534.441.842.066.192-.02.35-.248.448z" fill="#4D6BFE"/></svg></div>
+                            <div class="bar-label">DeepSeek-R1</div>
+                        </div>
+                    </div>
+                </div>
+
+                <h2>Abstract</h2>
+                <p>Large Language Models (LLMs) excel at generative tasks, yet their tendency to "hallucinate" severely limits adoption in high-stakes domains. We introduce <strong>VerifAIble Bench</strong>&mdash;the first end-to-end benchmark for evaluating LLM Agents on <em>verifiable evidence collection</em>. The benchmark comprises <strong>21 test cases</strong> spanning static text, HTML tables, JavaScript-rendered dynamic pages, PDF documents, and video transcripts, drawn from financial regulatory portals in China and the United States. We evaluate 4 models (GLM-5, Kimi-K2.5, MiniMax-M2.5, DeepSeek-R1) using an all-or-nothing gated scoring system across four dimensions: answer correctness, citation creation, citation embedding, and evidence type matching. Results show that <strong>GLM-5 achieves a perfect score of 2,100</strong>, Kimi-K2.5 and MiniMax-M2.5 tie at 1,680 (average 80.0), and DeepSeek-R1 trails at 1,080 (average 51.4). Dynamic page interaction emerges as the dominant differentiator across models. Cost analysis based on OpenRouter API pricing reveals that GLM-5 not only scores highest but also costs the least ($0.64 total), achieving a cost-efficiency <strong>3.4&times;</strong> higher than the lowest-ranked model. All models complete the full 21-case benchmark for under $1.20.</p>
+
+                <hr>
+
+                <h2>1. Introduction</h2>
+
+                <h3>1.1 LLM Hallucination and the Need for Grounding</h3>
+                <p>Large Language Models have achieved remarkable progress in open-domain question answering and content generation, but their inherent "hallucination" problem&mdash;generating plausible yet factually incorrect content&mdash;severely constrains their use in finance, law, journalism, and other domains requiring high verifiability. To address this, the industry has widely adopted Grounding strategies, requiring model outputs to be traceable to verifiable original sources.</p>
+
+                <h3>1.2 Limitations of Existing Benchmarks</h3>
+                <p>Existing RAG (Retrieval-Augmented Generation) benchmarks primarily evaluate retrieval quality and answer generation quality, but have significant blind spots:</p>
+                <ol>
+                    <li><strong>No evidence verifiability dimension:</strong> They only assess whether answers are correct, not whether answers can be independently verified by third parties</li>
+                    <li><strong>Ignore real-world web interaction:</strong> Most benchmarks use pre-processed static corpora without addressing JavaScript dynamic rendering, date filtering, pagination, and other real-world web operations</li>
+                    <li><strong>No end-to-end evidence pipeline evaluation:</strong> The complete pipeline from search &rarr; navigation &rarr; interaction &rarr; collection &rarr; citation lacks systematic assessment</li>
+                </ol>
+
+                <h3>1.3 VerifAIble Platform and VerifAIble Bench</h3>
+                <p><strong>VerifAIble</strong> is a verifiable evidence management platform that supports highlight annotation and playback verification of web evidence. Building on this platform, we designed <strong>VerifAIble Bench</strong> to evaluate the ability of LLM Agents to complete the full pipeline of &ldquo;search &rarr; page interaction &rarr; data collection &rarr; citation creation.&rdquo;</p>
+                <p>Unlike traditional RAG benchmarks, VerifAIble Bench requires models not only to answer correctly, but also to:</p>
+                <ul>
+                    <li>Create verifiable citations pointing to original web sources</li>
+                    <li>Embed citation markers within the answer text</li>
+                    <li>Collect the correct type of evidence (text/table/PDF/video)</li>
+                </ul>
+
+                <h2>2. Benchmark Design</h2>
+
+                <h3>2.1 Test Set Composition</h3>
+                <p>VerifAIble Bench contains <strong>21 test cases</strong> distributed across five categories:</p>
+                <table>
+                    <thead><tr><th>Category</th><th>Cases</th><th>Description</th><th>Difficulty</th></tr></thead>
+                    <tbody>
+                        <tr><td>Static Text</td><td>6</td><td>Extract data from web page body text</td><td>&#9733;&#9734;&#9734;&#9734;&#9734;</td></tr>
+                        <tr><td>Static Table</td><td>7</td><td>Locate specific row-column data from HTML tables</td><td>&#9733;&#9733;&#9734;&#9734;&#9734;</td></tr>
+                        <tr><td>Dynamic Page</td><td>4</td><td>Execute JS operations (date selection, pagination) before collecting</td><td>&#9733;&#9733;&#9733;&#9733;&#9734;</td></tr>
+                        <tr><td>Dynamic+PDF</td><td>2</td><td>Search and open PDF within dynamic pages</td><td>&#9733;&#9733;&#9733;&#9733;&#9733;</td></tr>
+                        <tr><td>Video</td><td>2</td><td>Extract info from video transcripts</td><td>&#9733;&#9733;&#9733;&#9734;&#9734;</td></tr>
+                    </tbody>
+                </table>
+
+                <p><strong>Data sources:</strong> stats.gov.cn (8), sse.com.cn (6), csrc.gov.cn (1), federalreserve.gov (3), treasury.gov (1), youtube.com (2)</p>
+
+                <h3>2.2 Agent Tool Set</h3>
+                <p>The LLM Agent is equipped with <strong>6 tools</strong>:</p>
+                <table>
+                    <thead><tr><th>Tool</th><th>Function</th></tr></thead>
+                    <tbody>
+                        <tr><td><code>verifaible_web_search</code></td><td>Search the internet for relevant pages</td></tr>
+                        <tr><td><code>web_fetch</code></td><td>Retrieve web page content from a URL</td></tr>
+                        <tr><td><code>analyze_page</code></td><td>Analyze page structure and interaction methods</td></tr>
+                        <tr><td><code>test_action_steps</code></td><td>Execute actions on pages (click, input, JS execution)</td></tr>
+                        <tr><td><code>verifaible_cite</code></td><td>Create verifiable citations and save evidence snapshots</td></tr>
+                        <tr><td><code>video_transcript</code></td><td>Retrieve YouTube video transcript</td></tr>
+                    </tbody>
+                </table>
+
+                <h3>2.3 Scoring Criteria</h3>
+                <p>VerifAIble Bench employs an <strong>All-or-Nothing Gated Scoring System</strong>:</p>
+                <blockquote><p><strong>Gate:</strong> If the answer is not completely correct (answerCorrect &ne; 1.0), the total score is <strong>0</strong>.</p></blockquote>
+
+                <table>
+                    <thead><tr><th>Dimension</th><th>Weight</th><th>Description</th></tr></thead>
+                    <tbody>
+                        <tr><td>Answer Correctness</td><td>40</td><td>All expected keywords present in model answer</td></tr>
+                        <tr><td>Citation Created</td><td>25</td><td><code>verifaible_cite</code> was called</td></tr>
+                        <tr><td>Citation In Text</td><td>15</td><td>Answer contains <code>[@v:ID]</code> marker</td></tr>
+                        <tr><td>Evidence Type Match</td><td>20</td><td>Cited evidence type matches expected type</td></tr>
+                    </tbody>
+                </table>
+
+                <p>This results in only three possible scores: <strong>100</strong> (perfect), <strong>80</strong> (correct answer, evidence type mismatch), or <strong>0</strong> (wrong answer).</p>
+
+                <h3>2.4 Experimental Configuration</h3>
+                <p>API: OpenRouter Responses API &middot; Temperature: 0.3 &middot; Max round trips: 30 &middot; Independent session per case, no shared state.</p>
+
+                <h2>3. Evaluated Models</h2>
+                <table>
+                    <thead><tr><th>Model</th><th>Provider</th><th>Characteristics</th></tr></thead>
+                    <tbody>
+                        <tr><td><strong>GLM-5</strong></td><td>Zhipu AI</td><td>Next-gen model with strong tool-calling</td></tr>
+                        <tr><td><strong>Kimi-K2.5</strong></td><td>Moonshot AI</td><td>Long-context understanding, multimodal</td></tr>
+                        <tr><td><strong>MiniMax-M2.5</strong></td><td>MiniMax</td><td>Cost-effective, large context window</td></tr>
+                        <tr><td><strong>DeepSeek-R1</strong></td><td>DeepSeek</td><td>Reasoning-specialized, deep CoT inference</td></tr>
+                    </tbody>
+                </table>
+
+                <h2>4. Results</h2>
+
+                <h3>4.1 Overall Rankings</h3>
+                <table>
+                    <thead><tr><th>Rank</th><th>Model</th><th>Total</th><th>Avg</th><th>Pass</th><th>Full</th><th>Avg Rounds</th><th>Avg Tools</th><th>Total Time</th><th>API Cost</th></tr></thead>
+                    <tbody>
+                        <tr><td>&#129351;</td><td><strong>GLM-5</strong></td><td class="score-perfect"><strong>2,100</strong></td><td class="score-perfect"><strong>100.0</strong></td><td><strong>21/21</strong></td><td><strong>21/21</strong></td><td>7.7</td><td>6.7</td><td>55.7 min</td><td class="score-perfect"><strong>$0.64</strong></td></tr>
+                        <tr><td>&#129352;</td><td><strong>MiniMax-M2.5</strong></td><td>1,680</td><td>80.0</td><td>17/21</td><td>16/21</td><td>10.6</td><td>9.7</td><td>71.3 min</td><td>$1.10</td></tr>
+                        <tr><td>&#129352;</td><td><strong>Kimi-K2.5</strong></td><td>1,680</td><td>80.0</td><td>17/21</td><td>16/21</td><td>8.0</td><td>7.0</td><td>60.6 min</td><td>$0.73</td></tr>
+                        <tr><td>4</td><td>DeepSeek-R1</td><td>1,080</td><td>51.4</td><td>11/21</td><td>10/21</td><td>5.0</td><td>4.0</td><td>115.0 min</td><td>$1.11</td></tr>
+                    </tbody>
+                </table>
+                <blockquote><p><strong>Note:</strong> Pass = cases with score &gt; 0; Full = cases with score = 100.</p></blockquote>
+
+                <h3>4.2 Category Analysis</h3>
+                <table>
+                    <thead><tr><th>Category</th><th>Cases</th><th>GLM-5</th><th>MiniMax</th><th>Kimi</th><th>R1</th></tr></thead>
+                    <tbody>
+                        <tr><td>Static Text</td><td>6</td><td class="score-perfect"><strong>600</strong> (100%)</td><td>580 (96.7%)</td><td class="score-perfect"><strong>600</strong> (100%)</td><td class="score-perfect"><strong>600</strong> (100%)</td></tr>
+                        <tr><td>Static Table</td><td>7</td><td class="score-perfect"><strong>700</strong> (100%)</td><td class="score-perfect"><strong>700</strong> (100%)</td><td>600 (85.7%)</td><td>580 (82.9%)</td></tr>
+                        <tr><td>Dynamic Page</td><td>4</td><td class="score-perfect"><strong>400</strong> (100%)</td><td class="score-0">0 (0%)</td><td>100 (25%)</td><td class="score-0">0 (0%)</td></tr>
+                        <tr><td>Dynamic+PDF</td><td>2</td><td class="score-perfect"><strong>200</strong> (100%)</td><td class="score-perfect"><strong>200</strong> (100%)</td><td>180 (90%)</td><td class="score-0">0 (0%)</td></tr>
+                        <tr><td>Video</td><td>2</td><td class="score-perfect"><strong>200</strong> (100%)</td><td class="score-perfect"><strong>200</strong> (100%)</td><td class="score-perfect"><strong>200</strong> (100%)</td><td class="score-0">0 (0%)</td></tr>
+                    </tbody>
+                </table>
+
+                <!-- Category Horizontal Bar Chart -->
+                <div class="bar-chart-grouped">
+                    <div class="bar-chart-title">Score by Category (%)</div>
+
+                    <div class="bar-group-row">
+                        <div class="bar-group-label">Static Text</div>
+                        <div class="bar-group-tracks">
+                            <div class="bar-h glm"  style="width:100%">100</div>
+                            <div class="bar-h mini" style="width:96.7%">96.7</div>
+                            <div class="bar-h kimi" style="width:100%">100</div>
+                            <div class="bar-h r1"   style="width:100%">100</div>
+                        </div>
+                    </div>
+
+                    <div class="bar-group-row">
+                        <div class="bar-group-label">Static Table</div>
+                        <div class="bar-group-tracks">
+                            <div class="bar-h glm"  style="width:100%">100</div>
+                            <div class="bar-h mini" style="width:100%">100</div>
+                            <div class="bar-h kimi" style="width:85.7%">85.7</div>
+                            <div class="bar-h r1"   style="width:82.9%">82.9</div>
+                        </div>
+                    </div>
+
+                    <div class="bar-group-row">
+                        <div class="bar-group-label">Dynamic Page</div>
+                        <div class="bar-group-tracks">
+                            <div class="bar-h glm"  style="width:100%">100</div>
+                            <div class="bar-h-zero">0</div>
+                            <div class="bar-h kimi" style="width:25%">25</div>
+                            <div class="bar-h-zero">0</div>
+                        </div>
+                    </div>
+
+                    <div class="bar-group-row">
+                        <div class="bar-group-label">Dynamic+PDF</div>
+                        <div class="bar-group-tracks">
+                            <div class="bar-h glm"  style="width:100%">100</div>
+                            <div class="bar-h mini" style="width:100%">100</div>
+                            <div class="bar-h kimi" style="width:90%">90</div>
+                            <div class="bar-h-zero">0</div>
+                        </div>
+                    </div>
+
+                    <div class="bar-group-row">
+                        <div class="bar-group-label">Video</div>
+                        <div class="bar-group-tracks">
+                            <div class="bar-h glm"  style="width:100%">100</div>
+                            <div class="bar-h mini" style="width:100%">100</div>
+                            <div class="bar-h kimi" style="width:100%">100</div>
+                            <div class="bar-h-zero">0</div>
+                        </div>
+                    </div>
+
+                    <div class="bar-legend">
+                        <div class="bar-legend-item"><div class="bar-legend-dot dot-glm"></div>GLM-5</div>
+                        <div class="bar-legend-item"><div class="bar-legend-dot dot-mini"></div>MiniMax</div>
+                        <div class="bar-legend-item"><div class="bar-legend-dot dot-kimi"></div>Kimi</div>
+                        <div class="bar-legend-item"><div class="bar-legend-dot dot-r1"></div>R1</div>
+                    </div>
+                </div>
+
+                <p><strong>Key Findings:</strong></p>
+                <ul>
+                    <li><strong>Static content:</strong> All four models perform similarly well</li>
+                    <li><strong>Dynamic pages are the dominant differentiator:</strong> Only GLM-5 completed all 4 dynamic cases</li>
+                    <li><strong>DeepSeek-R1 fails across all non-static categories:</strong> Zero scores on all 8 dynamic, PDF, and video cases</li>
+                </ul>
+
+                <h3>4.3 Token Usage &amp; Efficiency</h3>
+                <table>
+                    <thead><tr><th>Model</th><th>Input Tokens</th><th>Output Tokens</th><th>API Cost</th><th>Score/10K Tokens</th><th>Score/min</th><th>Score/$</th></tr></thead>
+                    <tbody>
+                        <tr><td><strong>GLM-5</strong></td><td>1.87M</td><td>31.5K</td><td>$0.64</td><td class="score-perfect"><strong>11.1</strong></td><td class="score-perfect"><strong>37.7</strong></td><td class="score-perfect"><strong>3,281</strong></td></tr>
+                        <tr><td>MiniMax-M2.5</td><td>3.45M</td><td>54.4K</td><td>$1.10</td><td>4.8</td><td>23.6</td><td>1,527</td></tr>
+                        <tr><td>Kimi-K2.5</td><td>2.65M</td><td>39.8K</td><td>$0.73</td><td>6.2</td><td>27.7</td><td>2,301</td></tr>
+                        <tr><td>DeepSeek-R1</td><td>1.02M</td><td>160.2K</td><td>$1.11</td><td>9.2</td><td>9.4</td><td>971</td></tr>
+                    </tbody>
+                </table>
+
+                <!-- Efficiency Bar Chart -->
+                <div class="bar-chart">
+                    <div class="bar-chart-title">Score per Minute</div>
+                    <div class="bar-chart-bars">
+                        <div class="bar-item bar-glm">
+                            <div class="bar-pillar-area"><div class="bar-pillar" style="height:100%"><span class="bar-value">37.7</span></div></div>
+                            <div class="bar-logo"><svg viewBox="0 0 24 24"><path d="M11.991 23.503a.24.24 0 00-.244.248.24.24 0 00.244.249.24.24 0 00.245-.249.24.24 0 00-.22-.247l-.025-.001zM9.671 5.365a1.697 1.697 0 011.099 2.132l-.071.172-.016.04-.018.054c-.07.16-.104.32-.104.498-.035.71.47 1.279 1.186 1.314h.366c1.309.053 2.338 1.173 2.286 2.523-.052 1.332-1.152 2.38-2.478 2.327h-.174c-.715.018-1.274.64-1.239 1.368 0 .124.018.23.053.337.209.373.54.658.96.8.75.23 1.517-.125 1.9-.782l.018-.035c.402-.64 1.17-.96 1.92-.711.854.284 1.378 1.226 1.099 2.167a1.661 1.661 0 01-2.077 1.102 1.711 1.711 0 01-.907-.711l-.017-.035c-.2-.323-.463-.58-.851-.711l-.056-.018a1.646 1.646 0 00-1.954.746 1.66 1.66 0 01-1.065.764 1.677 1.677 0 01-1.989-1.279c-.209-.906.332-1.83 1.257-2.043a1.51 1.51 0 01.296-.035h.018c.68-.071 1.151-.622 1.116-1.333a1.307 1.307 0 00-.227-.693 2.515 2.515 0 01-.366-1.403 2.39 2.39 0 01.366-1.208c.14-.195.21-.444.227-.693.018-.71-.506-1.261-1.186-1.332l-.07-.018a1.43 1.43 0 01-.299-.07l-.05-.019a1.7 1.7 0 01-1.047-2.114 1.68 1.68 0 012.094-1.101zm-5.575 10.11c.26-.264.639-.367.994-.27.355.096.633.379.728.74.095.362-.007.748-.267 1.013-.402.41-1.053.41-1.455 0a1.062 1.062 0 010-1.482zm14.845-.294c.359-.09.738.024.992.297.254.274.344.665.237 1.025-.107.36-.396.634-.756.718-.551.128-1.1-.22-1.23-.781a1.05 1.05 0 01.757-1.26zm-.064-4.39c.314.32.49.753.49 1.206 0 .452-.176.886-.49 1.206-.315.32-.74.5-1.185.5-.444 0-.87-.18-1.184-.5a1.727 1.727 0 010-2.412 1.654 1.654 0 012.369 0zm-11.243.163c.364.484.447 1.128.218 1.691a1.665 1.665 0 01-2.188.923c-.855-.36-1.26-1.358-.907-2.228a1.68 1.68 0 011.33-1.038c.593-.08 1.183.169 1.547.652zm11.545-4.221c.368 0 .708.2.892.524.184.324.184.724 0 1.048a1.026 1.026 0 01-.892.524c-.568 0-1.03-.47-1.03-1.048 0-.579.462-1.048 1.03-1.048zm-14.358 0c.368 0 .707.2.891.524.184.324.184.724 0 1.048a1.026 1.026 0 01-.891.524c-.569 0-1.03-.47-1.03-1.048 0-.579.461-1.048 1.03-1.048zm10.031-1.475c.925 0 1.675.764 1.675 1.706s-.75 1.705-1.675 1.705-1.674-.763-1.674-1.705c0-.942.75-1.706 1.674-1.706zm-2.626-.684c.362-.082.653-.356.761-.718a1.062 1.062 0 00-.238-1.028 1.017 1.017 0 00-.996-.294c-.547.14-.881.7-.752 1.257.13.558.675.907 1.225.783zm0 16.876c.359-.087.644-.36.75-.72a1.062 1.062 0 00-.237-1.019 1.018 1.018 0 00-.985-.301 1.037 1.037 0 00-.762.717c-.108.361-.017.754.239 1.028.245.263.606.377.953.305l.043-.01zM17.19 3.5a.631.631 0 00.628-.64c0-.355-.279-.64-.628-.64a.631.631 0 00-.628.64c0 .355.28.64.628.64zm-10.38 0a.631.631 0 00.628-.64c0-.355-.28-.64-.628-.64a.631.631 0 00-.628.64c0 .355.279.64.628.64zm-5.182 7.852a.631.631 0 00-.628.64c0 .354.28.639.628.639a.63.63 0 00.627-.606l.001-.034a.62.62 0 00-.628-.64zm5.182 9.13a.631.631 0 00-.628.64c0 .355.279.64.628.64a.631.631 0 00.628-.64c0-.355-.28-.64-.628-.64zm10.38.018a.631.631 0 00-.628.64c0 .355.28.64.628.64a.631.631 0 00.628-.64c0-.355-.279-.64-.628-.64zm5.182-9.148a.631.631 0 00-.628.64c0 .354.279.639.628.639a.631.631 0 00.628-.64c0-.355-.28-.64-.628-.64zm-.384-4.992a.24.24 0 00.244-.249.24.24 0 00-.244-.249.24.24 0 00-.244.249c0 .142.122.249.244.249zM11.991.497a.24.24 0 00.245-.248A.24.24 0 0011.99 0a.24.24 0 00-.244.249c0 .133.108.236.223.247l.021.001zM2.011 6.36a.24.24 0 00.245-.249.24.24 0 00-.244-.249.24.24 0 00-.244.249.24.24 0 00.244.249zm0 11.263a.24.24 0 00-.243.248.24.24 0 00.244.249.24.24 0 00.244-.249.252.252 0 00-.244-.248zm19.995-.018a.24.24 0 00-.245.248.24.24 0 00.245.25.24.24 0 00.244-.25.252.252 0 00-.244-.248z" fill="#3859FF"/></svg></div>
+                            <div class="bar-label">GLM-5</div>
+                        </div>
+                        <div class="bar-item bar-kimi">
+                            <div class="bar-pillar-area"><div class="bar-pillar" style="height:73.5%"><span class="bar-value">27.7</span></div></div>
+                            <div class="bar-logo"><svg viewBox="0 0 24 25" fill="none"><path d="M21.72.94c1.23 0 2.23 1 2.23 2.23s-1 2.23-2.23 2.23h-1.97a.26.26 0 01-.26-.26V3.17c0-1.23 1-2.23 2.23-2.23z" fill="#1783FF"/><path d="M9.39 13.95l8.43-8.36c.16-.16.07-.47-.14-.47h-4.54s-.1.02-.14.06L3.92 14.19c-.14.14-.35.02-.35-.21V5.39c0-.15-.1-.27-.22-.27H.22c-.12 0-.22.12-.22.27v18.53c0 .15.1.27.22.27h3.13c.12 0 .22-.12.22-.27v-3.78c0-.08.03-.16.08-.21l2.82-2.79c.07-.07.16-.08.24-.03l7.53 5.54c1.23.83 2.61 1.34 4.01 1.49.12.01.23-.11.23-.27v-3.56c0-.14-.08-.25-.19-.26-.82-.13-1.63-.45-2.35-.94l-6.52-4.72c-.14-.09-.15-.32-.03-.44z" fill="#000"/></svg></div>
+                            <div class="bar-label">Kimi-K2.5</div>
+                        </div>
+                        <div class="bar-item bar-mini">
+                            <div class="bar-pillar-area"><div class="bar-pillar" style="height:62.6%"><span class="bar-value">23.6</span></div></div>
+                            <div class="bar-logo"><svg viewBox="0 0 24 24"><path d="M16.278 2c1.156 0 2.093.927 2.093 2.07v12.501a.74.74 0 00.744.709.74.74 0 00.743-.709V9.099a2.06 2.06 0 012.071-2.049A2.06 2.06 0 0124 9.1v6.561a.649.649 0 01-.652.645.649.649 0 01-.653-.645V9.1a.762.762 0 00-.766-.758.762.762 0 00-.766.758v7.472a2.037 2.037 0 01-2.048 2.026 2.037 2.037 0 01-2.048-2.026v-12.5a.785.785 0 00-.788-.753.785.785 0 00-.789.752l-.001 15.904A2.037 2.037 0 0113.441 22a2.037 2.037 0 01-2.048-2.026V18.04c0-.356.292-.645.652-.645.36 0 .652.289.652.645v1.934c0 .263.142.506.372.638.23.131.514.131.744 0a.734.734 0 00.372-.638V4.07c0-1.143.937-2.07 2.093-2.07zm-5.674 0c1.156 0 2.093.927 2.093 2.07v11.523a.648.648 0 01-.652.645.648.648 0 01-.652-.645V4.07a.785.785 0 00-.789-.78.785.785 0 00-.789.78v14.013a2.06 2.06 0 01-2.07 2.048 2.06 2.06 0 01-2.071-2.048V9.1a.762.762 0 00-.766-.758.762.762 0 00-.766.758v3.8a2.06 2.06 0 01-2.071 2.049A2.06 2.06 0 010 12.9v-1.378c0-.357.292-.646.652-.646.36 0 .653.29.653.646V12.9c0 .418.343.757.766.757s.766-.339.766-.757V9.099a2.06 2.06 0 012.07-2.048 2.06 2.06 0 012.071 2.048v8.984c0 .419.343.758.767.758.423 0 .766-.339.766-.758V4.07c0-1.143.937-2.07 2.093-2.07z" fill="#F23F5D"/></svg></div>
+                            <div class="bar-label">MiniMax-M2.5</div>
+                        </div>
+                        <div class="bar-item bar-r1">
+                            <div class="bar-pillar-area"><div class="bar-pillar" style="height:24.9%"><span class="bar-value">9.4</span></div></div>
+                            <div class="bar-logo"><svg viewBox="2 5 28 22" fill="none"><path d="m27.501 8.469c-.252-.123-.36.111-.508.23-.05.04-.093.09-.135.135-.368.395-.797.652-1.358.621-.821-.045-1.521.213-2.14.842-.132-.776-.57-1.238-1.235-1.535-.349-.155-.701-.309-.944-.645-.171-.238-.217-.504-.303-.765-.054-.159-.108-.32-.29-.348-.197-.031-.274.135-.352.273-.31.567-.43 1.192-.419 1.825.028 1.421.628 2.554 1.82 3.36.136.093.17.186.128.321-.081.278-.178.547-.264.824-.054.178-.135.217-.324.14a5.448 5.448 0 01-1.719-1.169c-.848-.82-1.614-1.726-2.57-2.435-.225-.166-.449-.32-.681-.467-.976-.95.128-1.729.383-1.82.267-.096.093-.428-.77-.424s-1.653.293-2.659.677a2.782 2.782 0 01-.46.135 9.554 9.554 0 00-2.853-.1c-1.866.21-3.356 1.092-4.452 2.6-1.315 1.81-1.625 3.87-1.246 6.018.399 2.261 1.552 4.136 3.326 5.601 1.837 1.518 3.955 2.262 6.37 2.12 1.466-.085 3.1-.282 4.942-1.842.465.23.952.322 1.762.392.623.059 1.223-.031 1.687-.127.728-.154.677-.828.414-.953-2.132-.994-1.665-.59-2.09-.916 1.084-1.285 2.717-2.619 3.356-6.94.05-.343.007-.558 0-.837-.004-.168.034-.235.228-.254a4.084 4.084 0 001.529-.47c1.382-.757 1.938-1.997 2.07-3.485.02-.227-.004-.463-.243-.582zm-12.041 13.391c-2.067-1.627-3.07-2.162-3.483-2.138-.387.021-.318.465-.233.754.089.285.205.482.368.732.113.166.19.414-.112.598-.666.414-1.823-.139-1.878-.166-1.347-.793-2.473-1.842-3.267-3.276-.765-1.38-1.21-2.861-1.284-4.441-.02-.383.093-.518.472-.586a4.692 4.692 0 011.514-.04c2.109.31 3.905 1.255 5.41 2.749.86.853 1.51 1.871 2.18 2.865.711 1.057 1.478 2.063 2.454 2.887.343.289.619.51.881.672-.792.088-2.117.107-3.022-.61zm.99-6.38a.304.304 0 11.609 0c0 .17-.136.304-.306.304a.3.3 0 01-.303-.305zm3.077 1.581c-.197.08-.394.15-.584.159a1.246 1.246 0 01-.79-.252c-.27-.227-.463-.354-.546-.752a1.752 1.752 0 01.016-.582c.07-.324-.008-.531-.235-.72-.187-.155-.422-.196-.682-.196a.551.551 0 01-.252-.078c-.108-.055-.197-.19-.112-.356.027-.053.159-.183.19-.207.352-.201.758-.135 1.134.016.349.142.611.404.99.773.388.448.457.573.678.906.174.264.333.534.441.842.066.192-.02.35-.248.448z" fill="#4D6BFE"/></svg></div>
+                            <div class="bar-label">DeepSeek-R1</div>
+                        </div>
+                    </div>
+                </div>
+
+                <h3>4.4 The DeepSeek-R1 CoT Paradox</h3>
+                <table>
+                    <thead><tr><th>Metric</th><th>DeepSeek-R1</th><th>Other Models (avg)</th><th>Ratio</th></tr></thead>
+                    <tbody>
+                        <tr><td>Avg Output Tokens</td><td>7,630</td><td>2,000</td><td><strong>3.8&times;</strong></td></tr>
+                        <tr><td>Avg Rounds</td><td>5.0</td><td>8.8</td><td><strong>0.57&times;</strong></td></tr>
+                        <tr><td>Avg Tool Calls</td><td>4.0</td><td>7.8</td><td><strong>0.51&times;</strong></td></tr>
+                        <tr><td>Score</td><td>51.4</td><td>86.7</td><td><strong>0.59&times;</strong></td></tr>
+                        <tr><td>Total Time</td><td>115.0 min</td><td>62.5 min</td><td><strong>1.84&times;</strong></td></tr>
+                    </tbody>
+                </table>
+                <p>R1 allocates massive compute to Chain-of-Thought reasoning text but fails to translate it into effective tool-use behavior. Its fewer tool calls mean it cannot complete tasks requiring multi-step interaction.</p>
+
+                <h3>4.5 API Cost Analysis</h3>
+                <p>Using OpenRouter pricing as of February 2026, we computed the total API cost for each model to complete all 21 test cases.</p>
+                <table>
+                    <thead><tr><th>Model</th><th>Input Price ($/M)</th><th>Output Price ($/M)</th><th>Input Cost</th><th>Output Cost</th><th>Total Cost</th><th>Score/$</th></tr></thead>
+                    <tbody>
+                        <tr><td><strong>GLM-5</strong></td><td>$0.30</td><td>$2.55</td><td>$0.56</td><td>$0.08</td><td class="score-perfect"><strong>$0.64</strong></td><td class="score-perfect"><strong>3,281</strong></td></tr>
+                        <tr><td>Kimi-K2.5</td><td>$0.23</td><td>$3.00</td><td>$0.61</td><td>$0.12</td><td><strong>$0.73</strong></td><td>2,301</td></tr>
+                        <tr><td>MiniMax-M2.5</td><td>$0.30</td><td>$1.20</td><td>$1.04</td><td>$0.07</td><td><strong>$1.10</strong></td><td>1,527</td></tr>
+                        <tr><td>DeepSeek-R1</td><td>$0.70</td><td>$2.50</td><td>$0.71</td><td>$0.40</td><td><strong>$1.11</strong></td><td>971</td></tr>
+                    </tbody>
+                </table>
+                <p><strong>Key Findings:</strong></p>
+                <ul>
+                    <li><strong>GLM-5 is cheapest and most cost-efficient:</strong> $0.64 total with a perfect score; score/$ is <strong>3.4&times;</strong> that of DeepSeek-R1</li>
+                    <li><strong>Input tokens dominate costs (84%&ndash;94%)</strong> for most models; reducing conversation rounds is the most effective cost optimization</li>
+                    <li><strong>DeepSeek-R1&rsquo;s output cost anomaly:</strong> CoT reasoning text pushes output cost to <strong>36%</strong> of total (vs 6%&ndash;16% for others)</li>
+                    <li><strong>All models under $1.20 total:</strong> Agent-based evidence collection is economically viable at scale</li>
+                </ul>
+
+                <h2>5. In-Depth Analysis</h2>
+
+                <h3>5.1 Why Did GLM-5 Achieve a Perfect Score?</h3>
+                <ol>
+                    <li><strong>Efficient dynamic page interaction:</strong> Accurately identified DOM structures and correctly set dates via <code>exec_js</code>, completing the most complex tasks within 10&ndash;28 rounds</li>
+                    <li><strong>Precise tool-call decisions:</strong> Average 6.7 tool calls per case&mdash;&ldquo;just right&rdquo;</li>
+                    <li><strong>100% citation creation rate:</strong> Always called <code>verifaible_cite</code> and embedded citation markers</li>
+                </ol>
+
+                <h3>5.2 Dynamic Pages as the Primary Discriminator</h3>
+                <table>
+                    <thead><tr><th>Case</th><th>Task</th><th>GLM-5</th><th>MiniMax</th><th>Kimi</th><th>R1</th></tr></thead>
+                    <tbody>
+                        <tr><td>cn_dynamic_001</td><td>Bond transaction count</td><td class="score-100">&#10004; 100</td><td class="score-0">&#10008; 0</td><td class="score-100">&#10004; 100</td><td class="score-0">&#10008; 0</td></tr>
+                        <tr><td>cn_dynamic_002</td><td>Top market cap ratio</td><td class="score-100">&#10004; 100</td><td class="score-0">&#10008; 0</td><td class="score-0">&#10008; 0</td><td class="score-0">&#10008; 0</td></tr>
+                        <tr><td>cn_dynamic_003</td><td>Fund trading volume</td><td class="score-100">&#10004; 100</td><td class="score-0">&#10008; 0</td><td class="score-0">&#10008; 0</td><td class="score-0">&#10008; 0</td></tr>
+                        <tr><td>cn_dynamic_004</td><td>Securities lending balance</td><td class="score-100">&#10004; 100</td><td class="score-0">&#10008; 0</td><td class="score-0">&#10008; 0</td><td class="score-0">&#10008; 0</td></tr>
+                    </tbody>
+                </table>
+                <p><strong>Common failure reasons:</strong> date confusion (retrieving 2026 data instead of 2025), round trip exhaustion (30 rounds without completion), and premature termination.</p>
+
+                <h3>5.3 The Reasoning Model Paradox</h3>
+                <p>For Agent tasks requiring &ldquo;frequent tool calls + environment interaction,&rdquo; improvements in pure reasoning capability cannot compensate for deficiencies in action capability. R1 produced 31,201 output tokens in just 5 rounds for one case yet achieved zero successful page interactions.</p>
+
+                <h2>6. Limitations &amp; Future Work</h2>
+                <ul>
+                    <li><strong>Limited scale:</strong> 21 cases; plan to expand to 100+</li>
+                    <li><strong>Limited models:</strong> 4 models; GPT-4o, Claude, Gemini not yet included</li>
+                    <li><strong>Domain concentration:</strong> Focused on financial regulatory sites</li>
+                    <li><strong>Single run:</strong> No repeated experiments for stability assessment</li>
+                    <li><strong>Pricing volatility:</strong> API costs based on OpenRouter Feb 2026 snapshot; rates may change</li>
+                    <li><strong>Future:</strong> More domains, multilingual expansion, dynamic cost tracking</li>
+                </ul>
+
+                <h2>Appendix: Complete Score Matrix</h2>
+                <table>
+                    <thead><tr><th>#</th><th>Case ID</th><th>Category</th><th>Question</th><th>GLM-5</th><th>MiniMax</th><th>Kimi</th><th>R1</th></tr></thead>
+                    <tbody>
+                        <tr><td>1</td><td>cn_text_001</td><td>text</td><td>2025 China total population</td><td class="score-100">100</td><td class="score-100">100</td><td class="score-100">100</td><td class="score-100">100</td></tr>
+                        <tr><td>2</td><td>cn_text_002</td><td>text</td><td>CSRC regulatory bureaus</td><td class="score-100">100</td><td class="score-100">100</td><td class="score-100">100</td><td class="score-100">100</td></tr>
+                        <tr><td>3</td><td>cn_text_table_001</td><td>text/table</td><td>Jan 2026 PMI</td><td class="score-100">100</td><td class="score-100">100</td><td class="score-100">100</td><td class="score-100">100</td></tr>
+                        <tr><td>4</td><td>cn_table_001</td><td>table</td><td>Rebar price (Jan late)</td><td class="score-100">100</td><td class="score-100">100</td><td class="score-100">100</td><td class="score-100">100</td></tr>
+                        <tr><td>5</td><td>cn_table_002</td><td>table</td><td>Zhengzhou housing YoY</td><td class="score-100">100</td><td class="score-100">100</td><td class="score-0"><strong>0</strong></td><td class="score-0"><strong>0</strong></td></tr>
+                        <tr><td>6</td><td>cn_table_003</td><td>table</td><td>Rental housing rent</td><td class="score-100">100</td><td class="score-100">100</td><td class="score-100">100</td><td class="score-100">100</td></tr>
+                        <tr><td>7</td><td>cn_table_004</td><td>table</td><td>Durable goods price</td><td class="score-100">100</td><td class="score-100">100</td><td class="score-100">100</td><td class="score-80">80</td></tr>
+                        <tr><td>8</td><td>cn_table_005</td><td>table</td><td>Non-mfg activity index</td><td class="score-100">100</td><td class="score-100">100</td><td class="score-100">100</td><td class="score-100">100</td></tr>
+                        <tr><td>9</td><td>cn_table_006</td><td>table</td><td>Rebar price (Feb early)</td><td class="score-100">100</td><td class="score-100">100</td><td class="score-100">100</td><td class="score-100">100</td></tr>
+                        <tr><td>10</td><td>cn_dynamic_001</td><td>dynamic</td><td>Gov bond txn count</td><td class="score-100">100</td><td class="score-0"><strong>0</strong></td><td class="score-100">100</td><td class="score-0"><strong>0</strong></td></tr>
+                        <tr><td>11</td><td>cn_dynamic_002</td><td>dynamic</td><td>Top mkt cap ratio</td><td class="score-100">100</td><td class="score-0"><strong>0</strong></td><td class="score-0"><strong>0</strong></td><td class="score-0"><strong>0</strong></td></tr>
+                        <tr><td>12</td><td>cn_dynamic_003</td><td>dynamic</td><td>Fund trading volume</td><td class="score-100">100</td><td class="score-0"><strong>0</strong></td><td class="score-0"><strong>0</strong></td><td class="score-0"><strong>0</strong></td></tr>
+                        <tr><td>13</td><td>cn_dynamic_004</td><td>dynamic</td><td>Securities lending bal.</td><td class="score-100">100</td><td class="score-0"><strong>0</strong></td><td class="score-0"><strong>0</strong></td><td class="score-0"><strong>0</strong></td></tr>
+                        <tr><td>14</td><td>cn_dynamic_pdf_001</td><td>dyn+pdf</td><td>China Gold branch head</td><td class="score-100">100</td><td class="score-100">100</td><td class="score-80">80</td><td class="score-0"><strong>0</strong></td></tr>
+                        <tr><td>15</td><td>cn_dynamic_pdf_002</td><td>dyn+pdf</td><td>SPDB net asset change</td><td class="score-100">100</td><td class="score-100">100</td><td class="score-100">100</td><td class="score-0"><strong>0</strong></td></tr>
+                        <tr><td>16</td><td>us_text_001</td><td>text</td><td>IORB rate (Feb 2024)</td><td class="score-100">100</td><td class="score-100">100</td><td class="score-100">100</td><td class="score-100">100</td></tr>
+                        <tr><td>17</td><td>us_text_002</td><td>text</td><td>FOMC dissenting vote</td><td class="score-100">100</td><td class="score-100">100</td><td class="score-100">100</td><td class="score-100">100</td></tr>
+                        <tr><td>18</td><td>us_text_003</td><td>text</td><td>IORB rate cut to</td><td class="score-100">100</td><td class="score-80">80</td><td class="score-100">100</td><td class="score-100">100</td></tr>
+                        <tr><td>19</td><td>us_table_001</td><td>table</td><td>10yr Treasury yield</td><td class="score-100">100</td><td class="score-100">100</td><td class="score-100">100</td><td class="score-100">100</td></tr>
+                        <tr><td>20</td><td>video_001</td><td>video</td><td>Ken Robinson quote</td><td class="score-100">100</td><td class="score-100">100</td><td class="score-100">100</td><td class="score-0"><strong>0</strong></td></tr>
+                        <tr><td>21</td><td>video_002</td><td>video</td><td>Neural net input neurons</td><td class="score-100">100</td><td class="score-100">100</td><td class="score-100">100</td><td class="score-0"><strong>0</strong></td></tr>
+                        <tr style="font-weight:700;background:#f8fafc"><td></td><td></td><td></td><td><strong>Total</strong></td><td class="score-perfect"><strong>2,100</strong></td><td><strong>1,680</strong></td><td><strong>1,680</strong></td><td><strong>1,080</strong></td></tr>
+                    </tbody>
+                </table>
+
+                <hr>
+                <p style="text-align:center;color:var(--text-gray);font-size:0.85rem;margin-top:2rem;">
+                    Full dataset and code:
+                    <a href="https://github.com/ChizhongWang/verifaible-bench" target="_blank" style="color:var(--primary-blue)">verifaible-bench</a>
+                </p>
+
+            </div><!-- /prose -->
+        </div><!-- /content-en -->
+
+
+        <!-- ==================== 中文版 ==================== -->
+        <div class="lang-content" id="content-zh">
+
+            <div class="article-header">
+                <h1>VerifAIble Bench: 评测大语言模型从真实网页采集可验证证据的能力</h1>
+                <p class="article-meta">
+                    2026 年 2 月
+                </p>
+            </div>
+
+            <div class="prose">
+
+                <!-- 均分柱状图 -->
+                <div class="bar-chart">
+                    <div class="bar-chart-title">平均得分（满分 100）</div>
+                    <div class="bar-chart-bars">
+                        <div class="bar-item bar-glm">
+                            <div class="bar-pillar-area"><div class="bar-pillar" style="height:100%"><span class="bar-value">100</span></div></div>
+                            <div class="bar-logo"><svg viewBox="0 0 24 24"><path d="M11.991 23.503a.24.24 0 00-.244.248.24.24 0 00.244.249.24.24 0 00.245-.249.24.24 0 00-.22-.247l-.025-.001zM9.671 5.365a1.697 1.697 0 011.099 2.132l-.071.172-.016.04-.018.054c-.07.16-.104.32-.104.498-.035.71.47 1.279 1.186 1.314h.366c1.309.053 2.338 1.173 2.286 2.523-.052 1.332-1.152 2.38-2.478 2.327h-.174c-.715.018-1.274.64-1.239 1.368 0 .124.018.23.053.337.209.373.54.658.96.8.75.23 1.517-.125 1.9-.782l.018-.035c.402-.64 1.17-.96 1.92-.711.854.284 1.378 1.226 1.099 2.167a1.661 1.661 0 01-2.077 1.102 1.711 1.711 0 01-.907-.711l-.017-.035c-.2-.323-.463-.58-.851-.711l-.056-.018a1.646 1.646 0 00-1.954.746 1.66 1.66 0 01-1.065.764 1.677 1.677 0 01-1.989-1.279c-.209-.906.332-1.83 1.257-2.043a1.51 1.51 0 01.296-.035h.018c.68-.071 1.151-.622 1.116-1.333a1.307 1.307 0 00-.227-.693 2.515 2.515 0 01-.366-1.403 2.39 2.39 0 01.366-1.208c.14-.195.21-.444.227-.693.018-.71-.506-1.261-1.186-1.332l-.07-.018a1.43 1.43 0 01-.299-.07l-.05-.019a1.7 1.7 0 01-1.047-2.114 1.68 1.68 0 012.094-1.101zm-5.575 10.11c.26-.264.639-.367.994-.27.355.096.633.379.728.74.095.362-.007.748-.267 1.013-.402.41-1.053.41-1.455 0a1.062 1.062 0 010-1.482zm14.845-.294c.359-.09.738.024.992.297.254.274.344.665.237 1.025-.107.36-.396.634-.756.718-.551.128-1.1-.22-1.23-.781a1.05 1.05 0 01.757-1.26zm-.064-4.39c.314.32.49.753.49 1.206 0 .452-.176.886-.49 1.206-.315.32-.74.5-1.185.5-.444 0-.87-.18-1.184-.5a1.727 1.727 0 010-2.412 1.654 1.654 0 012.369 0zm-11.243.163c.364.484.447 1.128.218 1.691a1.665 1.665 0 01-2.188.923c-.855-.36-1.26-1.358-.907-2.228a1.68 1.68 0 011.33-1.038c.593-.08 1.183.169 1.547.652zm11.545-4.221c.368 0 .708.2.892.524.184.324.184.724 0 1.048a1.026 1.026 0 01-.892.524c-.568 0-1.03-.47-1.03-1.048 0-.579.462-1.048 1.03-1.048zm-14.358 0c.368 0 .707.2.891.524.184.324.184.724 0 1.048a1.026 1.026 0 01-.891.524c-.569 0-1.03-.47-1.03-1.048 0-.579.461-1.048 1.03-1.048zm10.031-1.475c.925 0 1.675.764 1.675 1.706s-.75 1.705-1.675 1.705-1.674-.763-1.674-1.705c0-.942.75-1.706 1.674-1.706zm-2.626-.684c.362-.082.653-.356.761-.718a1.062 1.062 0 00-.238-1.028 1.017 1.017 0 00-.996-.294c-.547.14-.881.7-.752 1.257.13.558.675.907 1.225.783zm0 16.876c.359-.087.644-.36.75-.72a1.062 1.062 0 00-.237-1.019 1.018 1.018 0 00-.985-.301 1.037 1.037 0 00-.762.717c-.108.361-.017.754.239 1.028.245.263.606.377.953.305l.043-.01zM17.19 3.5a.631.631 0 00.628-.64c0-.355-.279-.64-.628-.64a.631.631 0 00-.628.64c0 .355.28.64.628.64zm-10.38 0a.631.631 0 00.628-.64c0-.355-.28-.64-.628-.64a.631.631 0 00-.628.64c0 .355.279.64.628.64zm-5.182 7.852a.631.631 0 00-.628.64c0 .354.28.639.628.639a.63.63 0 00.627-.606l.001-.034a.62.62 0 00-.628-.64zm5.182 9.13a.631.631 0 00-.628.64c0 .355.279.64.628.64a.631.631 0 00.628-.64c0-.355-.28-.64-.628-.64zm10.38.018a.631.631 0 00-.628.64c0 .355.28.64.628.64a.631.631 0 00.628-.64c0-.355-.279-.64-.628-.64zm5.182-9.148a.631.631 0 00-.628.64c0 .354.279.639.628.639a.631.631 0 00.628-.64c0-.355-.28-.64-.628-.64zm-.384-4.992a.24.24 0 00.244-.249.24.24 0 00-.244-.249.24.24 0 00-.244.249c0 .142.122.249.244.249zM11.991.497a.24.24 0 00.245-.248A.24.24 0 0011.99 0a.24.24 0 00-.244.249c0 .133.108.236.223.247l.021.001zM2.011 6.36a.24.24 0 00.245-.249.24.24 0 00-.244-.249.24.24 0 00-.244.249.24.24 0 00.244.249zm0 11.263a.24.24 0 00-.243.248.24.24 0 00.244.249.24.24 0 00.244-.249.252.252 0 00-.244-.248zm19.995-.018a.24.24 0 00-.245.248.24.24 0 00.245.25.24.24 0 00.244-.25.252.252 0 00-.244-.248z" fill="#3859FF"/></svg></div>
+                            <div class="bar-label">GLM-5</div>
+                        </div>
+                        <div class="bar-item bar-mini">
+                            <div class="bar-pillar-area"><div class="bar-pillar" style="height:80%"><span class="bar-value">80.0</span></div></div>
+                            <div class="bar-logo"><svg viewBox="0 0 24 24"><path d="M16.278 2c1.156 0 2.093.927 2.093 2.07v12.501a.74.74 0 00.744.709.74.74 0 00.743-.709V9.099a2.06 2.06 0 012.071-2.049A2.06 2.06 0 0124 9.1v6.561a.649.649 0 01-.652.645.649.649 0 01-.653-.645V9.1a.762.762 0 00-.766-.758.762.762 0 00-.766.758v7.472a2.037 2.037 0 01-2.048 2.026 2.037 2.037 0 01-2.048-2.026v-12.5a.785.785 0 00-.788-.753.785.785 0 00-.789.752l-.001 15.904A2.037 2.037 0 0113.441 22a2.037 2.037 0 01-2.048-2.026V18.04c0-.356.292-.645.652-.645.36 0 .652.289.652.645v1.934c0 .263.142.506.372.638.23.131.514.131.744 0a.734.734 0 00.372-.638V4.07c0-1.143.937-2.07 2.093-2.07zm-5.674 0c1.156 0 2.093.927 2.093 2.07v11.523a.648.648 0 01-.652.645.648.648 0 01-.652-.645V4.07a.785.785 0 00-.789-.78.785.785 0 00-.789.78v14.013a2.06 2.06 0 01-2.07 2.048 2.06 2.06 0 01-2.071-2.048V9.1a.762.762 0 00-.766-.758.762.762 0 00-.766.758v3.8a2.06 2.06 0 01-2.071 2.049A2.06 2.06 0 010 12.9v-1.378c0-.357.292-.646.652-.646.36 0 .653.29.653.646V12.9c0 .418.343.757.766.757s.766-.339.766-.757V9.099a2.06 2.06 0 012.07-2.048 2.06 2.06 0 012.071 2.048v8.984c0 .419.343.758.767.758.423 0 .766-.339.766-.758V4.07c0-1.143.937-2.07 2.093-2.07z" fill="#F23F5D"/></svg></div>
+                            <div class="bar-label">MiniMax-M2.5</div>
+                        </div>
+                        <div class="bar-item bar-kimi">
+                            <div class="bar-pillar-area"><div class="bar-pillar" style="height:80%"><span class="bar-value">80.0</span></div></div>
+                            <div class="bar-logo"><svg viewBox="0 0 24 25" fill="none"><path d="M21.72.94c1.23 0 2.23 1 2.23 2.23s-1 2.23-2.23 2.23h-1.97a.26.26 0 01-.26-.26V3.17c0-1.23 1-2.23 2.23-2.23z" fill="#1783FF"/><path d="M9.39 13.95l8.43-8.36c.16-.16.07-.47-.14-.47h-4.54s-.1.02-.14.06L3.92 14.19c-.14.14-.35.02-.35-.21V5.39c0-.15-.1-.27-.22-.27H.22c-.12 0-.22.12-.22.27v18.53c0 .15.1.27.22.27h3.13c.12 0 .22-.12.22-.27v-3.78c0-.08.03-.16.08-.21l2.82-2.79c.07-.07.16-.08.24-.03l7.53 5.54c1.23.83 2.61 1.34 4.01 1.49.12.01.23-.11.23-.27v-3.56c0-.14-.08-.25-.19-.26-.82-.13-1.63-.45-2.35-.94l-6.52-4.72c-.14-.09-.15-.32-.03-.44z" fill="#000"/></svg></div>
+                            <div class="bar-label">Kimi-K2.5</div>
+                        </div>
+                        <div class="bar-item bar-r1">
+                            <div class="bar-pillar-area"><div class="bar-pillar" style="height:51.4%"><span class="bar-value">51.4</span></div></div>
+                            <div class="bar-logo"><svg viewBox="2 5 28 22" fill="none"><path d="m27.501 8.469c-.252-.123-.36.111-.508.23-.05.04-.093.09-.135.135-.368.395-.797.652-1.358.621-.821-.045-1.521.213-2.14.842-.132-.776-.57-1.238-1.235-1.535-.349-.155-.701-.309-.944-.645-.171-.238-.217-.504-.303-.765-.054-.159-.108-.32-.29-.348-.197-.031-.274.135-.352.273-.31.567-.43 1.192-.419 1.825.028 1.421.628 2.554 1.82 3.36.136.093.17.186.128.321-.081.278-.178.547-.264.824-.054.178-.135.217-.324.14a5.448 5.448 0 01-1.719-1.169c-.848-.82-1.614-1.726-2.57-2.435-.225-.166-.449-.32-.681-.467-.976-.95.128-1.729.383-1.82.267-.096.093-.428-.77-.424s-1.653.293-2.659.677a2.782 2.782 0 01-.46.135 9.554 9.554 0 00-2.853-.1c-1.866.21-3.356 1.092-4.452 2.6-1.315 1.81-1.625 3.87-1.246 6.018.399 2.261 1.552 4.136 3.326 5.601 1.837 1.518 3.955 2.262 6.37 2.12 1.466-.085 3.1-.282 4.942-1.842.465.23.952.322 1.762.392.623.059 1.223-.031 1.687-.127.728-.154.677-.828.414-.953-2.132-.994-1.665-.59-2.09-.916 1.084-1.285 2.717-2.619 3.356-6.94.05-.343.007-.558 0-.837-.004-.168.034-.235.228-.254a4.084 4.084 0 001.529-.47c1.382-.757 1.938-1.997 2.07-3.485.02-.227-.004-.463-.243-.582zm-12.041 13.391c-2.067-1.627-3.07-2.162-3.483-2.138-.387.021-.318.465-.233.754.089.285.205.482.368.732.113.166.19.414-.112.598-.666.414-1.823-.139-1.878-.166-1.347-.793-2.473-1.842-3.267-3.276-.765-1.38-1.21-2.861-1.284-4.441-.02-.383.093-.518.472-.586a4.692 4.692 0 011.514-.04c2.109.31 3.905 1.255 5.41 2.749.86.853 1.51 1.871 2.18 2.865.711 1.057 1.478 2.063 2.454 2.887.343.289.619.51.881.672-.792.088-2.117.107-3.022-.61zm.99-6.38a.304.304 0 11.609 0c0 .17-.136.304-.306.304a.3.3 0 01-.303-.305zm3.077 1.581c-.197.08-.394.15-.584.159a1.246 1.246 0 01-.79-.252c-.27-.227-.463-.354-.546-.752a1.752 1.752 0 01.016-.582c.07-.324-.008-.531-.235-.72-.187-.155-.422-.196-.682-.196a.551.551 0 01-.252-.078c-.108-.055-.197-.19-.112-.356.027-.053.159-.183.19-.207.352-.201.758-.135 1.134.016.349.142.611.404.99.773.388.448.457.573.678.906.174.264.333.534.441.842.066.192-.02.35-.248.448z" fill="#4D6BFE"/></svg></div>
+                            <div class="bar-label">DeepSeek-R1</div>
+                        </div>
+                    </div>
+                </div>
+
+                <h2>摘要</h2>
+                <p>大语言模型（LLM）在生成式任务中表现出色，但其"幻觉"问题严重制约了在高可信度场景中的落地。我们提出 <strong>VerifAIble Bench</strong>——首个端到端评测 LLM Agent「可验证证据采集」能力的基准。该基准包含 <strong>21 个测试用例</strong>，覆盖静态文本、HTML 表格、JavaScript 动态页面、PDF 文档和视频字幕五类证据来源，涉及中美金融监管门户网站。我们评测了 4 个模型（GLM-5、Kimi-K2.5、MiniMax-M2.5、DeepSeek-R1），采用"全有或全无"门控评分体系，从答案正确性、引用创建、引用内嵌和证据类型匹配四个维度打分。结果显示：<strong>GLM-5 以满分 2100 分领先</strong>，Kimi-K2.5 与 MiniMax-M2.5 并列 1680 分（均分 80.0），DeepSeek-R1 以 1080 分垫底。动态页面交互能力是模型间最大的区分度来源。基于 OpenRouter API 定价的成本分析表明，GLM-5 不仅得分最高，总成本也最低（$0.64），性价比是最末位模型的 <strong>3.4 倍</strong>。所有模型完成全部 21 个测试的总成本均低于 $1.20。</p>
+
+                <hr>
+
+                <h2>1. 引言</h2>
+
+                <h3>1.1 LLM 幻觉与 Grounding 需求</h3>
+                <p>大语言模型在开放域问答、内容生成等任务中取得了显著进展，但其固有的"幻觉"（Hallucination）问题——即生成看似合理但事实错误的内容——严重限制了其在金融、法律、新闻等需要高可信度的领域中的应用。为解决此问题，业界广泛采用 Grounding（接地）策略，要求模型的输出能够追溯到可验证的原始来源。</p>
+
+                <h3>1.2 现有 Benchmark 的不足</h3>
+                <p>现有的 RAG 基准主要评测「检索质量」和「答案生成质量」，但存在以下盲区：</p>
+                <ol>
+                    <li><strong>缺少证据可验证性维度：</strong>只关注答案是否正确，不关注答案是否能被第三方独立验证</li>
+                    <li><strong>忽略真实网页交互：</strong>多数基准基于预处理过的静态语料，未涉及 JavaScript 动态渲染、日期筛选等操作</li>
+                    <li><strong>缺乏证据采集链路评测：</strong>从搜索→定位→交互→采集→引用的完整链路缺少系统性评估</li>
+                </ol>
+
+                <h3>1.3 VerifAIble 平台与 VerifAIble Bench</h3>
+                <p><strong>VerifAIble</strong> 是一个可验证证据管理平台，支持对网页证据进行高亮标注和回放验证。在此基础上，我们设计了 <strong>VerifAIble Bench</strong>，旨在评测 LLM Agent 完成「搜索 → 页面交互 → 数据采集 → 引用创建」完整链路的能力。</p>
+                <p>与传统 RAG 基准不同，VerifAIble Bench 要求模型不仅回答正确，还必须：</p>
+                <ul>
+                    <li>创建指向原始网页的可验证引用</li>
+                    <li>在答案文本中内嵌引用标记</li>
+                    <li>采集正确类型的证据（文本/表格/PDF/视频）</li>
+                </ul>
+
+                <h2>2. 基准设计</h2>
+
+                <h3>2.1 测试集构成</h3>
+                <p>VerifAIble Bench 包含 <strong>21 个测试用例</strong>，分布于五大类别：</p>
+                <table>
+                    <thead><tr><th>类别</th><th>用例数</th><th>说明</th><th>难度</th></tr></thead>
+                    <tbody>
+                        <tr><td>静态文本</td><td>6</td><td>从网页正文直接提取数据</td><td>&#9733;&#9734;&#9734;&#9734;&#9734;</td></tr>
+                        <tr><td>静态表格</td><td>7</td><td>从 HTML 表格定位特定行列数据</td><td>&#9733;&#9733;&#9734;&#9734;&#9734;</td></tr>
+                        <tr><td>动态页面</td><td>4</td><td>需执行 JS 操作后采集表格数据</td><td>&#9733;&#9733;&#9733;&#9733;&#9734;</td></tr>
+                        <tr><td>动态+PDF</td><td>2</td><td>在动态页面中搜索并打开 PDF 提取信息</td><td>&#9733;&#9733;&#9733;&#9733;&#9733;</td></tr>
+                        <tr><td>视频</td><td>2</td><td>通过视频字幕提取特定信息</td><td>&#9733;&#9733;&#9733;&#9734;&#9734;</td></tr>
+                    </tbody>
+                </table>
+
+                <p><strong>数据源：</strong>国家统计局 (8)、上海证券交易所 (6)、中国证监会 (1)、美联储 (3)、美国财政部 (1)、YouTube (2)</p>
+
+                <h3>2.2 Agent 工具集</h3>
+                <table>
+                    <thead><tr><th>工具</th><th>功能</th></tr></thead>
+                    <tbody>
+                        <tr><td><code>verifaible_web_search</code></td><td>搜索互联网获取相关页面</td></tr>
+                        <tr><td><code>web_fetch</code></td><td>获取指定 URL 的网页内容</td></tr>
+                        <tr><td><code>analyze_page</code></td><td>分析页面结构，识别关键元素</td></tr>
+                        <tr><td><code>test_action_steps</code></td><td>在页面上执行操作步骤（点击、输入、JS 执行）</td></tr>
+                        <tr><td><code>verifaible_cite</code></td><td>创建可验证引用，保存证据快照</td></tr>
+                        <tr><td><code>video_transcript</code></td><td>获取 YouTube 视频字幕</td></tr>
+                    </tbody>
+                </table>
+
+                <h3>2.3 评分标准</h3>
+                <p>采用 <strong>All-or-Nothing（全有或全无）门控评分体系</strong>：</p>
+                <blockquote><p><strong>门控：</strong>如果答案不完全正确（answerCorrect &ne; 1.0），总分直接为 <strong>0 分</strong>。</p></blockquote>
+
+                <table>
+                    <thead><tr><th>维度</th><th>权重</th><th>说明</th></tr></thead>
+                    <tbody>
+                        <tr><td>答案正确性</td><td>40</td><td>模型答案是否包含所有期望关键字</td></tr>
+                        <tr><td>引用创建</td><td>25</td><td>是否调用了 <code>verifaible_cite</code></td></tr>
+                        <tr><td>引用内嵌</td><td>15</td><td>答案中是否包含 <code>[@v:ID]</code> 标记</td></tr>
+                        <tr><td>证据类型匹配</td><td>20</td><td>引用的证据类型是否与期望一致</td></tr>
+                    </tbody>
+                </table>
+
+                <p>一个用例只有三种可能的分数：<strong>100</strong>（完美）、<strong>80</strong>（答案正确但证据类型不匹配）、<strong>0</strong>（答案错误）。</p>
+
+                <h3>2.4 实验配置</h3>
+                <p>API：OpenRouter Responses API · 温度：0.3 · 最大轮次：30 · 每个 case 独立会话，无状态共享。</p>
+
+                <h2>3. 评测模型</h2>
+                <table>
+                    <thead><tr><th>模型</th><th>提供商</th><th>特点</th></tr></thead>
+                    <tbody>
+                        <tr><td><strong>GLM-5</strong></td><td>智谱 AI</td><td>新一代通用大模型，工具调用能力强</td></tr>
+                        <tr><td><strong>Kimi-K2.5</strong></td><td>月之暗面</td><td>擅长长文本理解，支持多模态</td></tr>
+                        <tr><td><strong>MiniMax-M2.5</strong></td><td>MiniMax</td><td>高性价比模型，上下文窗口大</td></tr>
+                        <tr><td><strong>DeepSeek-R1</strong></td><td>DeepSeek</td><td>推理专用模型，Chain-of-Thought 深度推理</td></tr>
+                    </tbody>
+                </table>
+
+                <h2>4. 实验结果</h2>
+
+                <h3>4.1 总体排行</h3>
+                <table>
+                    <thead><tr><th>排名</th><th>模型</th><th>总分</th><th>均分</th><th>通过</th><th>满分</th><th>轮次</th><th>工具</th><th>耗时</th><th>API 成本</th></tr></thead>
+                    <tbody>
+                        <tr><td>&#129351;</td><td><strong>GLM-5</strong></td><td class="score-perfect"><strong>2,100</strong></td><td class="score-perfect"><strong>100.0</strong></td><td><strong>21/21</strong></td><td><strong>21/21</strong></td><td>7.7</td><td>6.7</td><td>55.7 min</td><td class="score-perfect"><strong>$0.64</strong></td></tr>
+                        <tr><td>&#129352;</td><td><strong>MiniMax-M2.5</strong></td><td>1,680</td><td>80.0</td><td>17/21</td><td>16/21</td><td>10.6</td><td>9.7</td><td>71.3 min</td><td>$1.10</td></tr>
+                        <tr><td>&#129352;</td><td><strong>Kimi-K2.5</strong></td><td>1,680</td><td>80.0</td><td>17/21</td><td>16/21</td><td>8.0</td><td>7.0</td><td>60.6 min</td><td>$0.73</td></tr>
+                        <tr><td>4</td><td>DeepSeek-R1</td><td>1,080</td><td>51.4</td><td>11/21</td><td>10/21</td><td>5.0</td><td>4.0</td><td>115.0 min</td><td>$1.11</td></tr>
+                    </tbody>
+                </table>
+
+                <h3>4.2 按类别分析</h3>
+                <table>
+                    <thead><tr><th>类别</th><th>用例</th><th>GLM-5</th><th>MiniMax</th><th>Kimi</th><th>R1</th></tr></thead>
+                    <tbody>
+                        <tr><td>静态文本</td><td>6</td><td class="score-perfect"><strong>600</strong> (100%)</td><td>580 (96.7%)</td><td class="score-perfect"><strong>600</strong> (100%)</td><td class="score-perfect"><strong>600</strong> (100%)</td></tr>
+                        <tr><td>静态表格</td><td>7</td><td class="score-perfect"><strong>700</strong> (100%)</td><td class="score-perfect"><strong>700</strong> (100%)</td><td>600 (85.7%)</td><td>580 (82.9%)</td></tr>
+                        <tr><td>动态页面</td><td>4</td><td class="score-perfect"><strong>400</strong> (100%)</td><td class="score-0">0 (0%)</td><td>100 (25%)</td><td class="score-0">0 (0%)</td></tr>
+                        <tr><td>动态+PDF</td><td>2</td><td class="score-perfect"><strong>200</strong> (100%)</td><td class="score-perfect"><strong>200</strong> (100%)</td><td>180 (90%)</td><td class="score-0">0 (0%)</td></tr>
+                        <tr><td>视频</td><td>2</td><td class="score-perfect"><strong>200</strong> (100%)</td><td class="score-perfect"><strong>200</strong> (100%)</td><td class="score-perfect"><strong>200</strong> (100%)</td><td class="score-0">0 (0%)</td></tr>
+                    </tbody>
+                </table>
+
+                <!-- 分类别水平柱状图 -->
+                <div class="bar-chart-grouped">
+                    <div class="bar-chart-title">各类别得分率 (%)</div>
+
+                    <div class="bar-group-row">
+                        <div class="bar-group-label">静态文本</div>
+                        <div class="bar-group-tracks">
+                            <div class="bar-h glm"  style="width:100%">100</div>
+                            <div class="bar-h mini" style="width:96.7%">96.7</div>
+                            <div class="bar-h kimi" style="width:100%">100</div>
+                            <div class="bar-h r1"   style="width:100%">100</div>
+                        </div>
+                    </div>
+
+                    <div class="bar-group-row">
+                        <div class="bar-group-label">静态表格</div>
+                        <div class="bar-group-tracks">
+                            <div class="bar-h glm"  style="width:100%">100</div>
+                            <div class="bar-h mini" style="width:100%">100</div>
+                            <div class="bar-h kimi" style="width:85.7%">85.7</div>
+                            <div class="bar-h r1"   style="width:82.9%">82.9</div>
+                        </div>
+                    </div>
+
+                    <div class="bar-group-row">
+                        <div class="bar-group-label">动态页面</div>
+                        <div class="bar-group-tracks">
+                            <div class="bar-h glm"  style="width:100%">100</div>
+                            <div class="bar-h-zero">0</div>
+                            <div class="bar-h kimi" style="width:25%">25</div>
+                            <div class="bar-h-zero">0</div>
+                        </div>
+                    </div>
+
+                    <div class="bar-group-row">
+                        <div class="bar-group-label">动态+PDF</div>
+                        <div class="bar-group-tracks">
+                            <div class="bar-h glm"  style="width:100%">100</div>
+                            <div class="bar-h mini" style="width:100%">100</div>
+                            <div class="bar-h kimi" style="width:90%">90</div>
+                            <div class="bar-h-zero">0</div>
+                        </div>
+                    </div>
+
+                    <div class="bar-group-row">
+                        <div class="bar-group-label">视频</div>
+                        <div class="bar-group-tracks">
+                            <div class="bar-h glm"  style="width:100%">100</div>
+                            <div class="bar-h mini" style="width:100%">100</div>
+                            <div class="bar-h kimi" style="width:100%">100</div>
+                            <div class="bar-h-zero">0</div>
+                        </div>
+                    </div>
+
+                    <div class="bar-legend">
+                        <div class="bar-legend-item"><div class="bar-legend-dot dot-glm"></div>GLM-5</div>
+                        <div class="bar-legend-item"><div class="bar-legend-dot dot-mini"></div>MiniMax</div>
+                        <div class="bar-legend-item"><div class="bar-legend-dot dot-kimi"></div>Kimi</div>
+                        <div class="bar-legend-item"><div class="bar-legend-dot dot-r1"></div>R1</div>
+                    </div>
+                </div>
+
+                <p><strong>关键发现：</strong></p>
+                <ul>
+                    <li><strong>静态内容：</strong>四个模型差异较小</li>
+                    <li><strong>动态页面是最大区分因素：</strong>仅 GLM-5 完成全部 4 个动态 case</li>
+                    <li><strong>DeepSeek-R1 在非静态场景全面失败：</strong>动态、PDF、视频共 8 个 case 全部零分</li>
+                </ul>
+
+                <h3>4.3 Token 用量与效率</h3>
+                <table>
+                    <thead><tr><th>模型</th><th>输入 Token</th><th>输出 Token</th><th>API 成本</th><th>得分/万Token</th><th>得分/分钟</th><th>得分/美元</th></tr></thead>
+                    <tbody>
+                        <tr><td><strong>GLM-5</strong></td><td>1.87M</td><td>31.5K</td><td>$0.64</td><td class="score-perfect"><strong>11.1</strong></td><td class="score-perfect"><strong>37.7</strong></td><td class="score-perfect"><strong>3,281</strong></td></tr>
+                        <tr><td>MiniMax-M2.5</td><td>3.45M</td><td>54.4K</td><td>$1.10</td><td>4.8</td><td>23.6</td><td>1,527</td></tr>
+                        <tr><td>Kimi-K2.5</td><td>2.65M</td><td>39.8K</td><td>$0.73</td><td>6.2</td><td>27.7</td><td>2,301</td></tr>
+                        <tr><td>DeepSeek-R1</td><td>1.02M</td><td>160.2K</td><td>$1.11</td><td>9.2</td><td>9.4</td><td>971</td></tr>
+                    </tbody>
+                </table>
+
+                <!-- 效率柱状图 -->
+                <div class="bar-chart">
+                    <div class="bar-chart-title">得分/分钟</div>
+                    <div class="bar-chart-bars">
+                        <div class="bar-item bar-glm">
+                            <div class="bar-pillar-area"><div class="bar-pillar" style="height:100%"><span class="bar-value">37.7</span></div></div>
+                            <div class="bar-logo"><svg viewBox="0 0 24 24"><path d="M11.991 23.503a.24.24 0 00-.244.248.24.24 0 00.244.249.24.24 0 00.245-.249.24.24 0 00-.22-.247l-.025-.001zM9.671 5.365a1.697 1.697 0 011.099 2.132l-.071.172-.016.04-.018.054c-.07.16-.104.32-.104.498-.035.71.47 1.279 1.186 1.314h.366c1.309.053 2.338 1.173 2.286 2.523-.052 1.332-1.152 2.38-2.478 2.327h-.174c-.715.018-1.274.64-1.239 1.368 0 .124.018.23.053.337.209.373.54.658.96.8.75.23 1.517-.125 1.9-.782l.018-.035c.402-.64 1.17-.96 1.92-.711.854.284 1.378 1.226 1.099 2.167a1.661 1.661 0 01-2.077 1.102 1.711 1.711 0 01-.907-.711l-.017-.035c-.2-.323-.463-.58-.851-.711l-.056-.018a1.646 1.646 0 00-1.954.746 1.66 1.66 0 01-1.065.764 1.677 1.677 0 01-1.989-1.279c-.209-.906.332-1.83 1.257-2.043a1.51 1.51 0 01.296-.035h.018c.68-.071 1.151-.622 1.116-1.333a1.307 1.307 0 00-.227-.693 2.515 2.515 0 01-.366-1.403 2.39 2.39 0 01.366-1.208c.14-.195.21-.444.227-.693.018-.71-.506-1.261-1.186-1.332l-.07-.018a1.43 1.43 0 01-.299-.07l-.05-.019a1.7 1.7 0 01-1.047-2.114 1.68 1.68 0 012.094-1.101zm-5.575 10.11c.26-.264.639-.367.994-.27.355.096.633.379.728.74.095.362-.007.748-.267 1.013-.402.41-1.053.41-1.455 0a1.062 1.062 0 010-1.482zm14.845-.294c.359-.09.738.024.992.297.254.274.344.665.237 1.025-.107.36-.396.634-.756.718-.551.128-1.1-.22-1.23-.781a1.05 1.05 0 01.757-1.26zm-.064-4.39c.314.32.49.753.49 1.206 0 .452-.176.886-.49 1.206-.315.32-.74.5-1.185.5-.444 0-.87-.18-1.184-.5a1.727 1.727 0 010-2.412 1.654 1.654 0 012.369 0zm-11.243.163c.364.484.447 1.128.218 1.691a1.665 1.665 0 01-2.188.923c-.855-.36-1.26-1.358-.907-2.228a1.68 1.68 0 011.33-1.038c.593-.08 1.183.169 1.547.652zm11.545-4.221c.368 0 .708.2.892.524.184.324.184.724 0 1.048a1.026 1.026 0 01-.892.524c-.568 0-1.03-.47-1.03-1.048 0-.579.462-1.048 1.03-1.048zm-14.358 0c.368 0 .707.2.891.524.184.324.184.724 0 1.048a1.026 1.026 0 01-.891.524c-.569 0-1.03-.47-1.03-1.048 0-.579.461-1.048 1.03-1.048zm10.031-1.475c.925 0 1.675.764 1.675 1.706s-.75 1.705-1.675 1.705-1.674-.763-1.674-1.705c0-.942.75-1.706 1.674-1.706zm-2.626-.684c.362-.082.653-.356.761-.718a1.062 1.062 0 00-.238-1.028 1.017 1.017 0 00-.996-.294c-.547.14-.881.7-.752 1.257.13.558.675.907 1.225.783zm0 16.876c.359-.087.644-.36.75-.72a1.062 1.062 0 00-.237-1.019 1.018 1.018 0 00-.985-.301 1.037 1.037 0 00-.762.717c-.108.361-.017.754.239 1.028.245.263.606.377.953.305l.043-.01zM17.19 3.5a.631.631 0 00.628-.64c0-.355-.279-.64-.628-.64a.631.631 0 00-.628.64c0 .355.28.64.628.64zm-10.38 0a.631.631 0 00.628-.64c0-.355-.28-.64-.628-.64a.631.631 0 00-.628.64c0 .355.279.64.628.64zm-5.182 7.852a.631.631 0 00-.628.64c0 .354.28.639.628.639a.63.63 0 00.627-.606l.001-.034a.62.62 0 00-.628-.64zm5.182 9.13a.631.631 0 00-.628.64c0 .355.279.64.628.64a.631.631 0 00.628-.64c0-.355-.28-.64-.628-.64zm10.38.018a.631.631 0 00-.628.64c0 .355.28.64.628.64a.631.631 0 00.628-.64c0-.355-.279-.64-.628-.64zm5.182-9.148a.631.631 0 00-.628.64c0 .354.279.639.628.639a.631.631 0 00.628-.64c0-.355-.28-.64-.628-.64zm-.384-4.992a.24.24 0 00.244-.249.24.24 0 00-.244-.249.24.24 0 00-.244.249c0 .142.122.249.244.249zM11.991.497a.24.24 0 00.245-.248A.24.24 0 0011.99 0a.24.24 0 00-.244.249c0 .133.108.236.223.247l.021.001zM2.011 6.36a.24.24 0 00.245-.249.24.24 0 00-.244-.249.24.24 0 00-.244.249.24.24 0 00.244.249zm0 11.263a.24.24 0 00-.243.248.24.24 0 00.244.249.24.24 0 00.244-.249.252.252 0 00-.244-.248zm19.995-.018a.24.24 0 00-.245.248.24.24 0 00.245.25.24.24 0 00.244-.25.252.252 0 00-.244-.248z" fill="#3859FF"/></svg></div>
+                            <div class="bar-label">GLM-5</div>
+                        </div>
+                        <div class="bar-item bar-kimi">
+                            <div class="bar-pillar-area"><div class="bar-pillar" style="height:73.5%"><span class="bar-value">27.7</span></div></div>
+                            <div class="bar-logo"><svg viewBox="0 0 24 25" fill="none"><path d="M21.72.94c1.23 0 2.23 1 2.23 2.23s-1 2.23-2.23 2.23h-1.97a.26.26 0 01-.26-.26V3.17c0-1.23 1-2.23 2.23-2.23z" fill="#1783FF"/><path d="M9.39 13.95l8.43-8.36c.16-.16.07-.47-.14-.47h-4.54s-.1.02-.14.06L3.92 14.19c-.14.14-.35.02-.35-.21V5.39c0-.15-.1-.27-.22-.27H.22c-.12 0-.22.12-.22.27v18.53c0 .15.1.27.22.27h3.13c.12 0 .22-.12.22-.27v-3.78c0-.08.03-.16.08-.21l2.82-2.79c.07-.07.16-.08.24-.03l7.53 5.54c1.23.83 2.61 1.34 4.01 1.49.12.01.23-.11.23-.27v-3.56c0-.14-.08-.25-.19-.26-.82-.13-1.63-.45-2.35-.94l-6.52-4.72c-.14-.09-.15-.32-.03-.44z" fill="#000"/></svg></div>
+                            <div class="bar-label">Kimi-K2.5</div>
+                        </div>
+                        <div class="bar-item bar-mini">
+                            <div class="bar-pillar-area"><div class="bar-pillar" style="height:62.6%"><span class="bar-value">23.6</span></div></div>
+                            <div class="bar-logo"><svg viewBox="0 0 24 24"><path d="M16.278 2c1.156 0 2.093.927 2.093 2.07v12.501a.74.74 0 00.744.709.74.74 0 00.743-.709V9.099a2.06 2.06 0 012.071-2.049A2.06 2.06 0 0124 9.1v6.561a.649.649 0 01-.652.645.649.649 0 01-.653-.645V9.1a.762.762 0 00-.766-.758.762.762 0 00-.766.758v7.472a2.037 2.037 0 01-2.048 2.026 2.037 2.037 0 01-2.048-2.026v-12.5a.785.785 0 00-.788-.753.785.785 0 00-.789.752l-.001 15.904A2.037 2.037 0 0113.441 22a2.037 2.037 0 01-2.048-2.026V18.04c0-.356.292-.645.652-.645.36 0 .652.289.652.645v1.934c0 .263.142.506.372.638.23.131.514.131.744 0a.734.734 0 00.372-.638V4.07c0-1.143.937-2.07 2.093-2.07zm-5.674 0c1.156 0 2.093.927 2.093 2.07v11.523a.648.648 0 01-.652.645.648.648 0 01-.652-.645V4.07a.785.785 0 00-.789-.78.785.785 0 00-.789.78v14.013a2.06 2.06 0 01-2.07 2.048 2.06 2.06 0 01-2.071-2.048V9.1a.762.762 0 00-.766-.758.762.762 0 00-.766.758v3.8a2.06 2.06 0 01-2.071 2.049A2.06 2.06 0 010 12.9v-1.378c0-.357.292-.646.652-.646.36 0 .653.29.653.646V12.9c0 .418.343.757.766.757s.766-.339.766-.757V9.099a2.06 2.06 0 012.07-2.048 2.06 2.06 0 012.071 2.048v8.984c0 .419.343.758.767.758.423 0 .766-.339.766-.758V4.07c0-1.143.937-2.07 2.093-2.07z" fill="#F23F5D"/></svg></div>
+                            <div class="bar-label">MiniMax-M2.5</div>
+                        </div>
+                        <div class="bar-item bar-r1">
+                            <div class="bar-pillar-area"><div class="bar-pillar" style="height:24.9%"><span class="bar-value">9.4</span></div></div>
+                            <div class="bar-logo"><svg viewBox="2 5 28 22" fill="none"><path d="m27.501 8.469c-.252-.123-.36.111-.508.23-.05.04-.093.09-.135.135-.368.395-.797.652-1.358.621-.821-.045-1.521.213-2.14.842-.132-.776-.57-1.238-1.235-1.535-.349-.155-.701-.309-.944-.645-.171-.238-.217-.504-.303-.765-.054-.159-.108-.32-.29-.348-.197-.031-.274.135-.352.273-.31.567-.43 1.192-.419 1.825.028 1.421.628 2.554 1.82 3.36.136.093.17.186.128.321-.081.278-.178.547-.264.824-.054.178-.135.217-.324.14a5.448 5.448 0 01-1.719-1.169c-.848-.82-1.614-1.726-2.57-2.435-.225-.166-.449-.32-.681-.467-.976-.95.128-1.729.383-1.82.267-.096.093-.428-.77-.424s-1.653.293-2.659.677a2.782 2.782 0 01-.46.135 9.554 9.554 0 00-2.853-.1c-1.866.21-3.356 1.092-4.452 2.6-1.315 1.81-1.625 3.87-1.246 6.018.399 2.261 1.552 4.136 3.326 5.601 1.837 1.518 3.955 2.262 6.37 2.12 1.466-.085 3.1-.282 4.942-1.842.465.23.952.322 1.762.392.623.059 1.223-.031 1.687-.127.728-.154.677-.828.414-.953-2.132-.994-1.665-.59-2.09-.916 1.084-1.285 2.717-2.619 3.356-6.94.05-.343.007-.558 0-.837-.004-.168.034-.235.228-.254a4.084 4.084 0 001.529-.47c1.382-.757 1.938-1.997 2.07-3.485.02-.227-.004-.463-.243-.582zm-12.041 13.391c-2.067-1.627-3.07-2.162-3.483-2.138-.387.021-.318.465-.233.754.089.285.205.482.368.732.113.166.19.414-.112.598-.666.414-1.823-.139-1.878-.166-1.347-.793-2.473-1.842-3.267-3.276-.765-1.38-1.21-2.861-1.284-4.441-.02-.383.093-.518.472-.586a4.692 4.692 0 011.514-.04c2.109.31 3.905 1.255 5.41 2.749.86.853 1.51 1.871 2.18 2.865.711 1.057 1.478 2.063 2.454 2.887.343.289.619.51.881.672-.792.088-2.117.107-3.022-.61zm.99-6.38a.304.304 0 11.609 0c0 .17-.136.304-.306.304a.3.3 0 01-.303-.305zm3.077 1.581c-.197.08-.394.15-.584.159a1.246 1.246 0 01-.79-.252c-.27-.227-.463-.354-.546-.752a1.752 1.752 0 01.016-.582c.07-.324-.008-.531-.235-.72-.187-.155-.422-.196-.682-.196a.551.551 0 01-.252-.078c-.108-.055-.197-.19-.112-.356.027-.053.159-.183.19-.207.352-.201.758-.135 1.134.016.349.142.611.404.99.773.388.448.457.573.678.906.174.264.333.534.441.842.066.192-.02.35-.248.448z" fill="#4D6BFE"/></svg></div>
+                            <div class="bar-label">DeepSeek-R1</div>
+                        </div>
+                    </div>
+                </div>
+
+                <h3>4.4 DeepSeek-R1 的 CoT 悖论</h3>
+                <table>
+                    <thead><tr><th>指标</th><th>DeepSeek-R1</th><th>其他模型平均</th><th>倍率</th></tr></thead>
+                    <tbody>
+                        <tr><td>平均输出 Token</td><td>7,630</td><td>2,000</td><td><strong>3.8&times;</strong></td></tr>
+                        <tr><td>平均轮次</td><td>5.0</td><td>8.8</td><td><strong>0.57&times;</strong></td></tr>
+                        <tr><td>平均工具调用</td><td>4.0</td><td>7.8</td><td><strong>0.51&times;</strong></td></tr>
+                        <tr><td>得分</td><td>51.4</td><td>86.7</td><td><strong>0.59&times;</strong></td></tr>
+                        <tr><td>总耗时</td><td>115.0 min</td><td>62.5 min</td><td><strong>1.84&times;</strong></td></tr>
+                    </tbody>
+                </table>
+                <p>R1 将大量计算资源用于生成 CoT 推理文本，但并未转化为有效的工具使用行为。较少的工具调用次数导致无法完成需要多步交互的任务。</p>
+
+                <h3>4.5 API 调用成本分析</h3>
+                <p>基于 OpenRouter 当前定价（2026 年 2 月），各模型完成全部 21 个测试用例的 API 调用总成本如下：</p>
+                <table>
+                    <thead><tr><th>模型</th><th>输入价格 ($/M)</th><th>输出价格 ($/M)</th><th>输入成本</th><th>输出成本</th><th>总成本</th><th>得分/美元</th></tr></thead>
+                    <tbody>
+                        <tr><td><strong>GLM-5</strong></td><td>$0.30</td><td>$2.55</td><td>$0.56</td><td>$0.08</td><td class="score-perfect"><strong>$0.64</strong></td><td class="score-perfect"><strong>3,281</strong></td></tr>
+                        <tr><td>Kimi-K2.5</td><td>$0.23</td><td>$3.00</td><td>$0.61</td><td>$0.12</td><td><strong>$0.73</strong></td><td>2,301</td></tr>
+                        <tr><td>MiniMax-M2.5</td><td>$0.30</td><td>$1.20</td><td>$1.04</td><td>$0.07</td><td><strong>$1.10</strong></td><td>1,527</td></tr>
+                        <tr><td>DeepSeek-R1</td><td>$0.70</td><td>$2.50</td><td>$0.71</td><td>$0.40</td><td><strong>$1.11</strong></td><td>971</td></tr>
+                    </tbody>
+                </table>
+                <p><strong>关键发现：</strong></p>
+                <ul>
+                    <li><strong>GLM-5 成本最低、性价比最高：</strong>仅需 $0.64 满分通过，得分/美元是 DeepSeek-R1 的 <strong>3.4 倍</strong></li>
+                    <li><strong>输入 Token 是主要成本驱动（84%&ndash;94%）：</strong>减少对话轮次是最有效的成本优化手段</li>
+                    <li><strong>DeepSeek-R1 输出成本占比异常：</strong>CoT 推理文本导致输出成本占总成本 <strong>36%</strong>（其他模型仅 6%&ndash;16%）</li>
+                    <li><strong>所有模型总成本均低于 $1.20：</strong>Agent 式证据采集具备大规模部署的经济可行性</li>
+                </ul>
+
+                <h2>5. 深度分析</h2>
+
+                <h3>5.1 为什么 GLM-5 满分？</h3>
+                <ol>
+                    <li><strong>高效的动态页面交互策略：</strong>准确识别 DOM 结构，通过 <code>exec_js</code> 正确设置日期</li>
+                    <li><strong>精准的工具调用决策：</strong>平均每 case 仅 6.7 次工具调用</li>
+                    <li><strong>100% 引用创建率：</strong>每次都正确调用 <code>verifaible_cite</code> 并内嵌标记</li>
+                </ol>
+
+                <h3>5.2 动态页面是最大区分度来源</h3>
+                <table>
+                    <thead><tr><th>Case</th><th>任务</th><th>GLM-5</th><th>MiniMax</th><th>Kimi</th><th>R1</th></tr></thead>
+                    <tbody>
+                        <tr><td>cn_dynamic_001</td><td>地方政府债成交笔数</td><td class="score-100">&#10004; 100</td><td class="score-0">&#10008; 0</td><td class="score-100">&#10004; 100</td><td class="score-0">&#10008; 0</td></tr>
+                        <tr><td>cn_dynamic_002</td><td>市值第一股票占比</td><td class="score-100">&#10004; 100</td><td class="score-0">&#10008; 0</td><td class="score-0">&#10008; 0</td><td class="score-0">&#10008; 0</td></tr>
+                        <tr><td>cn_dynamic_003</td><td>基金成交金额</td><td class="score-100">&#10004; 100</td><td class="score-0">&#10008; 0</td><td class="score-0">&#10008; 0</td><td class="score-0">&#10008; 0</td></tr>
+                        <tr><td>cn_dynamic_004</td><td>融券余量金额</td><td class="score-100">&#10004; 100</td><td class="score-0">&#10008; 0</td><td class="score-0">&#10008; 0</td><td class="score-0">&#10008; 0</td></tr>
+                    </tbody>
+                </table>
+                <p><strong>主要失败原因：</strong>日期混淆（获取了 2026 年数据而非 2025 年）、轮次耗尽（30 轮未完成）、过早放弃。</p>
+
+                <h3>5.3 推理模型的悖论</h3>
+                <p>对于需要「频繁工具调用 + 环境交互」的 Agent 任务，纯推理能力的提升无法弥补行动能力的不足。R1 在一个 case 中仅用 5 轮就产生了 31,201 个输出 Token，但无一次成功的页面交互。</p>
+
+                <h2>6. 局限与展望</h2>
+                <ul>
+                    <li><strong>测试集规模有限：</strong>21 个用例，计划扩展至 100+</li>
+                    <li><strong>模型数量有限：</strong>4 个模型，未包含 GPT-4o、Claude、Gemini</li>
+                    <li><strong>数据源集中：</strong>主要为金融监管网站</li>
+                    <li><strong>单次运行：</strong>未评估模型表现的稳定性</li>
+                    <li><strong>定价波动：</strong>API 成本基于 OpenRouter 2026 年 2 月定价快照，实际费率可能变化</li>
+                    <li><strong>未来：</strong>更多领域、多语言扩展、动态成本追踪</li>
+                </ul>
+
+                <h2>附录：完整得分矩阵</h2>
+                <table>
+                    <thead><tr><th>#</th><th>Case ID</th><th>类别</th><th>问题</th><th>GLM-5</th><th>MiniMax</th><th>Kimi</th><th>R1</th></tr></thead>
+                    <tbody>
+                        <tr><td>1</td><td>cn_text_001</td><td>text</td><td>2025年全国总人口</td><td class="score-100">100</td><td class="score-100">100</td><td class="score-100">100</td><td class="score-100">100</td></tr>
+                        <tr><td>2</td><td>cn_text_002</td><td>text</td><td>证监会监管局数量</td><td class="score-100">100</td><td class="score-100">100</td><td class="score-100">100</td><td class="score-100">100</td></tr>
+                        <tr><td>3</td><td>cn_text_table_001</td><td>text/table</td><td>2026年1月PMI</td><td class="score-100">100</td><td class="score-100">100</td><td class="score-100">100</td><td class="score-100">100</td></tr>
+                        <tr><td>4</td><td>cn_table_001</td><td>table</td><td>螺纹钢1月下旬涨跌</td><td class="score-100">100</td><td class="score-100">100</td><td class="score-100">100</td><td class="score-100">100</td></tr>
+                        <tr><td>5</td><td>cn_table_002</td><td>table</td><td>郑州二手住宅同比</td><td class="score-100">100</td><td class="score-100">100</td><td class="score-0"><strong>0</strong></td><td class="score-0"><strong>0</strong></td></tr>
+                        <tr><td>6</td><td>cn_table_003</td><td>table</td><td>租赁房房租同比</td><td class="score-100">100</td><td class="score-100">100</td><td class="score-100">100</td><td class="score-100">100</td></tr>
+                        <tr><td>7</td><td>cn_table_004</td><td>table</td><td>耐用消费品同比</td><td class="score-100">100</td><td class="score-100">100</td><td class="score-100">100</td><td class="score-80">80</td></tr>
+                        <tr><td>8</td><td>cn_table_005</td><td>table</td><td>非制造业商务活动</td><td class="score-100">100</td><td class="score-100">100</td><td class="score-100">100</td><td class="score-100">100</td></tr>
+                        <tr><td>9</td><td>cn_table_006</td><td>table</td><td>螺纹钢2月上旬涨跌</td><td class="score-100">100</td><td class="score-100">100</td><td class="score-100">100</td><td class="score-100">100</td></tr>
+                        <tr><td>10</td><td>cn_dynamic_001</td><td>dynamic</td><td>地方政府债成交笔数</td><td class="score-100">100</td><td class="score-0"><strong>0</strong></td><td class="score-100">100</td><td class="score-0"><strong>0</strong></td></tr>
+                        <tr><td>11</td><td>cn_dynamic_002</td><td>dynamic</td><td>市值第一占比</td><td class="score-100">100</td><td class="score-0"><strong>0</strong></td><td class="score-0"><strong>0</strong></td><td class="score-0"><strong>0</strong></td></tr>
+                        <tr><td>12</td><td>cn_dynamic_003</td><td>dynamic</td><td>基金成交金额</td><td class="score-100">100</td><td class="score-0"><strong>0</strong></td><td class="score-0"><strong>0</strong></td><td class="score-0"><strong>0</strong></td></tr>
+                        <tr><td>13</td><td>cn_dynamic_004</td><td>dynamic</td><td>融券余量金额</td><td class="score-100">100</td><td class="score-0"><strong>0</strong></td><td class="score-0"><strong>0</strong></td><td class="score-0"><strong>0</strong></td></tr>
+                        <tr><td>14</td><td>cn_dynamic_pdf_001</td><td>dyn+pdf</td><td>中国黄金分公司负责人</td><td class="score-100">100</td><td class="score-100">100</td><td class="score-80">80</td><td class="score-0"><strong>0</strong></td></tr>
+                        <tr><td>15</td><td>cn_dynamic_pdf_002</td><td>dyn+pdf</td><td>浦发银行每股净资产</td><td class="score-100">100</td><td class="score-100">100</td><td class="score-100">100</td><td class="score-0"><strong>0</strong></td></tr>
+                        <tr><td>16</td><td>us_text_001</td><td>text</td><td>IORB利率(2024.2)</td><td class="score-100">100</td><td class="score-100">100</td><td class="score-100">100</td><td class="score-100">100</td></tr>
+                        <tr><td>17</td><td>us_text_002</td><td>text</td><td>FOMC反对票</td><td class="score-100">100</td><td class="score-100">100</td><td class="score-100">100</td><td class="score-100">100</td></tr>
+                        <tr><td>18</td><td>us_text_003</td><td>text</td><td>IORB利率下调至</td><td class="score-100">100</td><td class="score-80">80</td><td class="score-100">100</td><td class="score-100">100</td></tr>
+                        <tr><td>19</td><td>us_table_001</td><td>table</td><td>10年期国债收益率</td><td class="score-100">100</td><td class="score-100">100</td><td class="score-100">100</td><td class="score-100">100</td></tr>
+                        <tr><td>20</td><td>video_001</td><td>video</td><td>Ken Robinson演讲</td><td class="score-100">100</td><td class="score-100">100</td><td class="score-100">100</td><td class="score-0"><strong>0</strong></td></tr>
+                        <tr><td>21</td><td>video_002</td><td>video</td><td>神经网络输入层神经元</td><td class="score-100">100</td><td class="score-100">100</td><td class="score-100">100</td><td class="score-0"><strong>0</strong></td></tr>
+                        <tr style="font-weight:700;background:#f8fafc"><td></td><td></td><td></td><td><strong>合计</strong></td><td class="score-perfect"><strong>2,100</strong></td><td><strong>1,680</strong></td><td><strong>1,680</strong></td><td><strong>1,080</strong></td></tr>
+                    </tbody>
+                </table>
+
+                <hr>
+                <p style="text-align:center;color:var(--text-gray);font-size:0.85rem;margin-top:2rem;">
+                    完整数据集与代码：
+                    <a href="https://github.com/ChizhongWang/verifaible-bench" target="_blank" style="color:var(--primary-blue)">verifaible-bench</a>
+                </p>
+
+            </div><!-- /prose -->
+        </div><!-- /content-zh -->
+
+    </div><!-- /article-container -->
+
+    <footer>
+        <p>&copy; 2025-2026 VerifAIble. Proof over Promises</p>
+    </footer>
+
+    <script>
+        function switchLang(lang) {
+            document.getElementById('content-en').classList.toggle('active', lang === 'en');
+            document.getElementById('content-zh').classList.toggle('active', lang === 'zh');
+
+            // Update toggle buttons
+            document.querySelectorAll('.lang-toggle button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+
+            // Save preference
+            localStorage.setItem('researchLang', lang);
+        }
+
+        // Load saved preference
+        document.addEventListener('DOMContentLoaded', function() {
+            const saved = localStorage.getItem('researchLang') ||
+                          (localStorage.getItem('preferredLanguage') || '').startsWith('zh') ? 'zh' : 'en';
+            if (saved === 'zh') {
+                switchLang('zh');
+                document.querySelectorAll('.lang-toggle button')[1].classList.add('active');
+                document.querySelectorAll('.lang-toggle button')[0].classList.remove('active');
+            }
+
+            // Wrap tables for horizontal scroll on mobile
+            document.querySelectorAll('.prose table').forEach(function(table) {
+                var wrap = document.createElement('div');
+                wrap.className = 'table-wrap';
+                table.parentNode.insertBefore(wrap, table);
+                wrap.appendChild(table);
+            });
+        });
+    </script>
+</body>
+</html>
