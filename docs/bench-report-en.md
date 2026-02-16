@@ -8,7 +8,7 @@
 
 ## Abstract
 
-Large Language Models (LLMs) excel at generative tasks, yet their tendency to "hallucinate" severely limits adoption in high-stakes domains. We introduce **VerifAIble Bench**—the first end-to-end benchmark for evaluating LLM Agents on *verifiable evidence collection*. The benchmark comprises **21 test cases** spanning static text, HTML tables, JavaScript-rendered dynamic pages, PDF documents, and video transcripts, drawn from financial regulatory portals in China and the United States. We evaluate 4 models (GLM-5, Kimi-K2.5, MiniMax-M2.5, DeepSeek-R1) using an all-or-nothing gated scoring system across four dimensions: answer correctness, citation creation, citation embedding, and evidence type matching. Results show that **GLM-5 achieves a perfect score of 2,100**, Kimi-K2.5 and MiniMax-M2.5 tie at 1,680 (average 80.0), and DeepSeek-R1 trails at 1,080 (average 51.4). Dynamic page interaction emerges as the dominant differentiator across models.
+Large Language Models (LLMs) excel at generative tasks, yet their tendency to "hallucinate" severely limits adoption in high-stakes domains. We introduce **VerifAIble Bench**—the first end-to-end benchmark for evaluating LLM Agents on *verifiable evidence collection*. The benchmark comprises **21 test cases** spanning static text, HTML tables, JavaScript-rendered dynamic pages, PDF documents, and video transcripts, drawn from financial regulatory portals in China and the United States. We evaluate 4 models (GLM-5, Kimi-K2.5, MiniMax-M2.5, DeepSeek-R1) using an all-or-nothing gated scoring system across four dimensions: answer correctness, citation creation, citation embedding, and evidence type matching. Results show that **GLM-5 achieves a perfect score of 2,100**, Kimi-K2.5 and MiniMax-M2.5 tie at 1,680 (average 80.0), and DeepSeek-R1 trails at 1,080 (average 51.4). Dynamic page interaction emerges as the dominant differentiator across models. Cost analysis based on OpenRouter API pricing reveals that GLM-5 not only scores highest but also costs the least ($0.64 total), achieving a cost-efficiency (score/dollar) **3.4× higher** than the lowest-ranked model. All models complete the full 21-case benchmark for under $1.20, validating the economic feasibility of agent-based evidence collection at scale.
 
 ---
 
@@ -134,12 +134,12 @@ Four LLMs accessible via OpenRouter were selected for this evaluation:
 
 ### 4.1 Overall Rankings
 
-| Rank | Model | Total | Avg | Pass | Full | Avg Rounds | Avg Tool Calls | Total Time |
-|------|-------|-------|-----|------|------|-----------|---------------|------------|
-| 🥇 | **GLM-5** | **2,100** | **100.0** | **21/21** | **21/21** | 7.7 | 6.7 | 55.7 min |
-| 🥈 | **MiniMax-M2.5** | 1,680 | 80.0 | 17/21 | 16/21 | 10.6 | 9.7 | 71.3 min |
-| 🥈 | **Kimi-K2.5** | 1,680 | 80.0 | 17/21 | 16/21 | 8.0 | 7.0 | 60.6 min |
-| 4 | DeepSeek-R1 | 1,080 | 51.4 | 11/21 | 10/21 | 5.0 | 4.0 | 115.0 min |
+| Rank | Model | Total | Avg | Pass | Full | Avg Rounds | Avg Tool Calls | Total Time | API Cost |
+|------|-------|-------|-----|------|------|-----------|---------------|------------|----------|
+| 🥇 | **GLM-5** | **2,100** | **100.0** | **21/21** | **21/21** | 7.7 | 6.7 | 55.7 min | **$0.64** |
+| 🥈 | **MiniMax-M2.5** | 1,680 | 80.0 | 17/21 | 16/21 | 10.6 | 9.7 | 71.3 min | $1.10 |
+| 🥈 | **Kimi-K2.5** | 1,680 | 80.0 | 17/21 | 16/21 | 8.0 | 7.0 | 60.6 min | $0.73 |
+| 4 | DeepSeek-R1 | 1,080 | 51.4 | 11/21 | 10/21 | 5.0 | 4.0 | 115.0 min | $1.11 |
 
 > **Note:** Pass = cases with score > 0; Full = cases with score = 100.
 
@@ -171,14 +171,14 @@ Four LLMs accessible via OpenRouter were selected for this evaluation:
 
 **Efficiency Metrics:**
 
-| Model | Score | Total Tokens | Total Time | Score/10K Tokens | Score/min |
-|-------|-------|-------------|------------|-----------------|----------|
-| **GLM-5** | 2,100 | 1.90M | 55.7 min | **11.1** | **37.7** |
-| MiniMax-M2.5 | 1,680 | 3.51M | 71.3 min | 4.8 | 23.6 |
-| Kimi-K2.5 | 1,680 | 2.70M | 60.6 min | 6.2 | 27.7 |
-| DeepSeek-R1 | 1,080 | 1.18M | 115.0 min | 9.2 | 9.4 |
+| Model | Score | Total Tokens | Total Time | API Cost | Score/10K Tokens | Score/min | Score/$ |
+|-------|-------|-------------|------------|----------|-----------------|----------|---------|
+| **GLM-5** | 2,100 | 1.90M | 55.7 min | $0.64 | **11.1** | **37.7** | **3,281** |
+| MiniMax-M2.5 | 1,680 | 3.51M | 71.3 min | $1.10 | 4.8 | 23.6 | 1,527 |
+| Kimi-K2.5 | 1,680 | 2.70M | 60.6 min | $0.73 | 6.2 | 27.7 | 2,301 |
+| DeepSeek-R1 | 1,080 | 1.18M | 115.0 min | $1.11 | 9.2 | 9.4 | 971 |
 
-> GLM-5 leads significantly in both score-per-token and score-per-minute efficiency.
+> GLM-5 leads significantly across all three efficiency dimensions: score-per-token, score-per-minute, and score-per-dollar. API costs computed using OpenRouter pricing as of February 2026.
 
 ### 4.4 Conversational Behavior Analysis
 
@@ -195,6 +195,45 @@ Four LLMs accessible via OpenRouter were selected for this evaluation:
 - Longest duration (5m29s/case) and lowest score (51.4)
 
 This demonstrates that R1's Chain-of-Thought reasoning generates extensive "thinking" text that fails to translate into better tool-use strategies. Its fewer tool calls mean it cannot complete tasks requiring multi-step interaction.
+
+### 4.5 API Cost Analysis
+
+Using OpenRouter pricing as of February 2026, we computed the total API cost for each model to complete all 21 test cases.
+
+**OpenRouter Model Pricing:**
+
+| Model | Input Price ($/M tokens) | Output Price ($/M tokens) |
+|-------|-------------------------|--------------------------|
+| GLM-5 | $0.30 | $2.55 |
+| Kimi-K2.5 | $0.23 | $3.00 |
+| MiniMax-M2.5 | $0.30 | $1.20 |
+| DeepSeek-R1 | $0.70 | $2.50 |
+
+**Cost Breakdown by Model:**
+
+| Model | Input Tokens | Output Tokens | Input Cost | Output Cost | **Total Cost** | Cost/Case |
+|-------|-------------|---------------|-----------|------------|--------------|-----------|
+| **GLM-5** | 1.87M | 31.5K | $0.56 | $0.08 | **$0.64** | $0.031 |
+| Kimi-K2.5 | 2.65M | 39.8K | $0.61 | $0.12 | **$0.73** | $0.035 |
+| MiniMax-M2.5 | 3.45M | 54.4K | $1.04 | $0.07 | **$1.10** | $0.052 |
+| DeepSeek-R1 | 1.02M | 160.2K | $0.71 | $0.40 | **$1.11** | $0.053 |
+
+**Cost-Efficiency Rankings:**
+
+| Rank | Model | Score | Total Cost | Score/$ | Cost/Point |
+|------|-------|-------|-----------|---------|-----------|
+| 🥇 | **GLM-5** | 2,100 | $0.64 | **3,281** | $0.0003 |
+| 🥈 | Kimi-K2.5 | 1,680 | $0.73 | 2,301 | $0.0004 |
+| 🥉 | MiniMax-M2.5 | 1,680 | $1.10 | 1,527 | $0.0007 |
+| 4 | DeepSeek-R1 | 1,080 | $1.11 | 971 | $0.0010 |
+
+**Key Findings:**
+
+- **GLM-5 achieves the lowest cost and highest cost-efficiency**: It completes all 21 tests for just $0.64 with a perfect score, delivering a score-per-dollar ratio **3.4× higher** than DeepSeek-R1
+- **Input tokens dominate costs**: For GLM-5, Kimi-K2.5, and MiniMax-M2.5, input costs account for **84%–94%** of total spend, meaning reducing conversation rounds (and thus context accumulation) is the most effective cost optimization strategy
+- **DeepSeek-R1's output cost anomaly**: Despite consuming the fewest input tokens (1.02M), its extensive CoT reasoning text pushes output costs to **36%** of total spend—far above the 6%–16% range of other models
+- **Lower unit price ≠ lower total cost**: MiniMax-M2.5 has the cheapest output rate ($1.20/M), yet its heavy input token consumption (3.45M) results in the third-highest total cost
+- **All models cost under $1.20 total**: For a 21-case benchmark, agent-based evidence collection remains economically viable at scale across all evaluated models
 
 ---
 
@@ -252,7 +291,7 @@ R1 allocates substantial computational resources to generating CoT reasoning tex
 2. **Limited model selection**: Only 4 models evaluated; GPT-4o, Claude, and other mainstream models are not included
 3. **Concentrated data sources**: Primarily focused on Chinese and U.S. financial regulatory websites, lacking coverage of other domains
 4. **Single run**: No repeated experiments to assess the stability of model performance
-5. **No cost accounting**: API call costs not compared across models
+5. **Pricing volatility**: API costs are based on an OpenRouter pricing snapshot from February 2026; actual rates may change over time
 
 ### 6.2 Future Work
 
@@ -260,7 +299,7 @@ R1 allocates substantial computational resources to generating CoT reasoning tex
 2. **Include more models**: Add GPT-4o, Claude, Gemini, and other international models for cross-comparison
 3. **Multilingual expansion**: Add test scenarios in Japanese, Korean, and other Asian languages
 4. **Stability assessment**: Run each case multiple times to evaluate performance variance
-5. **Cost-efficiency analysis**: Integrate precise API pricing data for cost-effectiveness metrics
+5. **Dynamic cost tracking**: Continuously update API pricing data to track long-term trends in cost-efficiency across models
 
 ---
 
