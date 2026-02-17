@@ -1,12 +1,12 @@
 {
   "version": "2.0",
-  "description": "VerifAIble Evidence Benchmark — 中美金融门户网站证据采集能力评测",
+  "description": "VerifAIble Evidence Benchmark",
   "cases": [
     {
       "id": "cn_text_001",
       "category": "text",
       "url": "https://www.stats.gov.cn/xxgk/jd/sjjd2020/202601/t20260119_1962338.html",
-      "question": "全国总人口数量",
+      "question": "2025年中国全国总人口数量",
       "answer": "140489 万人"
     },
     {
@@ -17,46 +17,54 @@
       "answer": "36"
     },
     {
-      "id": "cn_text_003",
-      "category": "text",
-      "url": "https://www.csrc.gov.cn/csrc/c100002/common_zcnr.shtml",
-      "question": "根据证监会介绍页面，中国证监会会机关内设多少个职能部门？",
-      "answer": "19"
+      "id": "cn_text_table_001",
+      "category": "text/table",
+      "evidence_type": "text|table",
+      "url": "https://www.stats.gov.cn/sj/zxfb/202601/t20260131_1962416.html",
+      "question": "2026年1月中国制造业采购经理指数（PMI）为多少(%)",
+      "answer": "49.3 %"
     },
     {
       "id": "cn_table_001",
       "category": "table",
       "url": "https://www.stats.gov.cn/sj/zxfb/202602/t20260204_1962539.html",
-      "question": "黑色金属螺纹钢2026年1月下旬的涨跌幅(%)",
+      "question": "黑色金属螺纹钢2026年1月下旬的涨跌幅(%)是多少？",
       "answer": "-0.7 %"
     },
     {
       "id": "cn_table_002",
       "category": "table",
-      "url": "https://www.stats.gov.cn/sj/zxfb/202601/t20260131_1962416.html",
-      "question": "2025年6月中国制造业PMI的出厂价格指数是多少(%)",
-      "answer": "46.2 %"
+      "url": "https://www.stats.gov.cn/sj/zxfb/202602/t20260213_1962617.html",
+      "question": "2026年1月郑州市二手住宅销售价格分类指数同比是多少？",
+      "answer": "90.9"
     },
     {
       "id": "cn_table_003",
       "category": "table",
-      "url": "http://www.pbc.gov.cn/zhengcehuobisi/125207/125213/125440/125838/125885/125896/2968988/index.html",
-      "question": "根据人民币现行利率表（2015年10月24日），城乡居民及单位存款中活期存款的利率是多少？",
-      "answer": "0.35 %"
+      "url": "https://www.stats.gov.cn/sj/zxfb/202602/t20260211_1962588.html",
+      "question": "2026年1月份居民消费价格中租赁房房租同比涨跌幅是多少？",
+      "answer": "-0.4"
     },
     {
       "id": "cn_table_004",
       "category": "table",
-      "url": "http://www.pbc.gov.cn/zhengcehuobisi/125207/125213/125440/125838/125885/125896/2968988/index.html",
-      "question": "根据人民币现行利率表（2015年10月24日），整存整取定期存款三年期的利率是多少？",
-      "answer": "2.75 %"
+      "url": "https://www.stats.gov.cn/sj/zxfb/202602/t20260211_1962587.html",
+      "question": "2026年1月工业生产者出厂价格中耐用消费品同比涨跌幅(%)是多少？",
+      "answer": "-1.8"
     },
     {
       "id": "cn_table_005",
       "category": "table",
-      "url": "http://www.pbc.gov.cn/zhengcehuobisi/125207/125213/125440/125838/125885/125896/2968998/index.html",
-      "question": "根据金融机构人民币贷款基准利率调整表（2015年10月24日），五年以上贷款的调整后利率是多少？",
-      "answer": "4.90 %"
+      "url": "https://www.stats.gov.cn/sj/zxfb/202601/t20260131_1962416.html",
+      "question": "中国非制造业主要分类指数（经季节调整）2026年1月中商务活动的是多少？",
+      "answer": "49.4"
+    },
+    {
+      "id": "cn_table_006",
+      "category": "table",
+      "url": "https://www.stats.gov.cn/sj/zxfb/202602/t20260213_1962621.html",
+      "question": "黑色金属螺纹钢2026年2月上旬的涨跌幅(%)是多少？",
+      "answer": "-0.3 %"
     },
     {
       "id": "cn_dynamic_001",
@@ -70,33 +78,42 @@
       "id": "cn_dynamic_002",
       "category": "dynamic",
       "evidence_type": "table",
-      "url": "https://data.eastmoney.com/cjsj/globalRateLPR.html",
-      "question": "根据东方财富网LPR品种数据页面，2024年10月21日公布的1年期LPR报价是多少？",
-      "answer": "3.10 %"
+      "url": "https://www.sse.com.cn/market/stockdata/marketvalue/main/",
+      "question": "2025年2月10日股票市价总值排名第一的股票所占总市值的比例(%)是多少",
+      "answer": "3.97"
     },
     {
       "id": "cn_dynamic_003",
       "category": "dynamic",
       "evidence_type": "table",
-      "url": "https://data.eastmoney.com/cjsj/globalRateLPR.html",
-      "question": "根据东方财富网LPR品种数据页面，2024年10月21日公布的5年期以上LPR报价是多少？",
-      "answer": "3.60 %"
+      "url": "https://www.sse.com.cn/market/funddata/overview/day/",
+      "question": "2025年2月10日基金成交金额（亿元）是多少？",
+      "answer": "1823.5"
     },
     {
       "id": "cn_dynamic_004",
       "category": "dynamic",
       "evidence_type": "table",
-      "url": "https://data.eastmoney.com/cjsj/cpi.html",
-      "question": "根据东方财富网CPI数据页面，2023年12月全国居民消费价格指数（CPI）同比增长率是多少？",
-      "answer": "-0.3 %"
+      "url": "https://www.sse.com.cn/market/othersdata/margin/sum/",
+      "question": "2025年2月10日融券余量金额(元)是多少",
+      "answer": "7,242,119,013"
     },
+
     {
       "id": "cn_dynamic_pdf_001",
       "category": "dynamic+pdf",
       "evidence_type": "pdf",
       "url": "https://www.sse.com.cn/disclosure/listedinfo/announcement/",
-      "question": "中国黄金集团黄金珠宝股份有限公司（600916）2026年1月31日发布的关于设立分公司的公告中，拟在哪四个地区设立分公司？",
-      "answer": "北京、上海、河南、四川"
+      "question": "中国黄金集团黄金珠宝股份有限公司（600916）2026年1月31日发布的关于设立分公司的公告中，郑州分公司的负责人是谁？",
+      "answer": "李宗阳"
+    },
+    {
+      "id": "cn_dynamic_pdf_002",
+      "category": "dynamic+pdf",
+      "evidence_type": "pdf",
+      "url": "https://www.sse.com.cn/disclosure/listedinfo/announcement/",
+      "question": "浦发银行（600000）在上海浦东发展银行股份有限公司2025年度业绩快报公告中提到归属于母公司普通股股东的每股净资产（元）的增减变动幅度（％）是多少？",
+      "answer": "-1.03"
     },
     {
       "id": "us_text_001",
@@ -116,15 +133,15 @@
       "id": "us_text_003",
       "category": "text",
       "url": "https://www.federalreserve.gov/newsevents/pressreleases/monetary20240918a1.htm",
-      "question": "根据美联储2024年9月18日FOMC会议实施说明，准备金余额利率(IORB rate)下调至多少？",
-      "answer": "4.9 %"
+      "question": "根据美联储2024年9月18日FOMC会议实施说明，准备金余额利率(IORB rate)下调至多少（%）？",
+      "answer": "4.9"
     },
     {
       "id": "us_table_001",
       "category": "table",
-      "url": "https://home.treasury.gov/resource-center/data-chart-center/interest-rates/TextView?type=daily_treasury_yield_curve&field_tdr_date_value=2024&field_tdr_date_value_month=202401",
-      "question": "2024年1月2日美国国债收益率曲线(Daily Treasury Par Yield Curve)中，10年期(10 Yr)收益率是多少？",
-      "answer": "4.09"
+      "url": "https://home.treasury.gov/resource-center/data-chart-center/interest-rates/TextView?type=daily_treasury_yield_curve&field_tdr_date_value=2026",
+      "question": "2026年2月6日美国国债收益率曲线(Daily Treasury Par Yield Curve)中，10年期(10 Yr)收益率是多少？",
+      "answer": "4.22"
     },
     {
       "id": "video_001",

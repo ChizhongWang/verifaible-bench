@@ -94,21 +94,45 @@ export async function sendResponses(opts: SendOptions): Promise<ResponsesResult>
   if (opts.temperature !== undefined) body.temperature = opts.temperature;
   if (opts.max_output_tokens) body.max_output_tokens = opts.max_output_tokens;
 
-  const res = await fetch(`${OPENROUTER_BASE}/responses`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${apiKey}`,
-      'HTTP-Referer': 'https://verifaible.space',
-      'X-Title': 'verifaible-bench',
-    },
-    body: JSON.stringify(body),
-  });
+  const MAX_RETRIES = 5;
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    let res: Response;
+    try {
+      res = await fetch(`${OPENROUTER_BASE}/responses`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${apiKey}`,
+          'HTTP-Referer': 'https://verifaible.space',
+          'X-Title': 'verifaible-bench',
+        },
+        body: JSON.stringify(body),
+      });
+    } catch (err) {
+      // Network-level error (DNS, connection reset, timeout)
+      if (attempt < MAX_RETRIES) {
+        const wait = Math.min(15 * (attempt + 1), 60);
+        console.log(`  [Network] ${(err as Error).message}, waiting ${wait}s before retry ${attempt + 1}/${MAX_RETRIES}...`);
+        await new Promise(r => setTimeout(r, wait * 1000));
+        continue;
+      }
+      throw new Error(`OpenRouter network error after ${MAX_RETRIES} retries: ${(err as Error).message}`);
+    }
 
-  if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(`OpenRouter ${res.status}: ${text.slice(0, 1000)}`);
+    if (res.status === 429 && attempt < MAX_RETRIES) {
+      const wait = Math.min(30 * (attempt + 1), 120);
+      console.log(`  [429] Rate limited, waiting ${wait}s before retry ${attempt + 1}/${MAX_RETRIES}...`);
+      await new Promise(r => setTimeout(r, wait * 1000));
+      continue;
+    }
+
+    if (!res.ok) {
+      const text = await res.text().catch(() => '');
+      throw new Error(`OpenRouter ${res.status}: ${text.slice(0, 1000)}`);
+    }
+
+    return (await res.json()) as ResponsesResult;
   }
 
-  return (await res.json()) as ResponsesResult;
+  throw new Error('OpenRouter: max retries exceeded');
 }
