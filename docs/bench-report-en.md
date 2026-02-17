@@ -137,13 +137,13 @@ Five LLMs accessible via OpenRouter were selected for this evaluation:
 
 ### 4.1 Overall Rankings
 
-| Rank | Model | Total | Avg | Pass | Full | Avg Rounds | Avg Tool Calls | Total Time | API Cost |
-|------|-------|-------|-----|------|------|-----------|---------------|------------|----------|
-| 🥇 | **GLM-5** | **2,100** | **100.0** | **21/21** | **21/21** | 7.7 | 6.7 | 55.7 min | **$0.64** |
-| 🥈 | **MiniMax-M2.5** | 1,680 | 80.0 | 17/21 | 16/21 | 10.6 | 9.7 | 71.3 min | $1.10 |
-| 🥈 | **Kimi-K2.5** | 1,680 | 80.0 | 17/21 | 16/21 | 8.0 | 7.0 | 60.6 min | $0.73 |
-| 4 | **Qwen3.5-Plus** | 1,180 | 56.2 | 12/21 | 11/21 | 4.5 | 3.5 | 17.6 min | $0.41 |
-| 5 | DeepSeek-R1 | 1,080 | 51.4 | 11/21 | 10/21 | 5.0 | 4.0 | 115.0 min | $1.11 |
+| Rank | Model | Total | Avg | Pass | Full | Avg Rounds | Avg Tool Calls | API Cost |
+|------|-------|-------|-----|------|------|-----------|---------------|----------|
+| 🥇 | **GLM-5** | **2,100** | **100.0** | **21/21** | **21/21** | 7.7 | 6.7 | **$0.64** |
+| 🥈 | **MiniMax-M2.5** | 1,680 | 80.0 | 17/21 | 16/21 | 10.6 | 9.7 | $1.10 |
+| 🥈 | **Kimi-K2.5** | 1,680 | 80.0 | 17/21 | 16/21 | 8.0 | 7.0 | $0.73 |
+| 4 | **Qwen3.5-Plus** | 1,180 | 56.2 | 12/21 | 11/21 | 4.5 | 3.5 | $0.41 |
+| 5 | DeepSeek-R1 | 1,080 | 51.4 | 11/21 | 10/21 | 5.0 | 4.0 | $1.11 |
 
 > **Note:** Pass = cases with score > 0; Full = cases with score = 100.
 
@@ -177,30 +177,30 @@ Five LLMs accessible via OpenRouter were selected for this evaluation:
 
 **Efficiency Metrics:**
 
-| Model | Score | Total Tokens | Total Time | API Cost | Score/10K Tokens | Score/min | Score/$ |
-|-------|-------|-------------|------------|----------|-----------------|----------|---------|
-| **GLM-5** | 2,100 | 1.90M | 55.7 min | $0.64 | **11.1** | **37.7** | **3,281** |
-| MiniMax-M2.5 | 1,680 | 3.51M | 71.3 min | $1.10 | 4.8 | 23.6 | 1,527 |
-| Kimi-K2.5 | 1,680 | 2.70M | 60.6 min | $0.73 | 6.2 | 27.7 | 2,301 |
-| Qwen3.5-Plus | 1,180 | 0.96M | 17.6 min | $0.41 | 12.3 | 67.0 | 2,878 |
-| DeepSeek-R1 | 1,080 | 1.18M | 115.0 min | $1.11 | 9.2 | 9.4 | 971 |
+| Model | Score | Total Tokens | API Cost | Score/10K Tokens | Score/$ |
+|-------|-------|-------------|----------|-----------------|---------|
+| **GLM-5** | 2,100 | 1.90M | $0.64 | **11.1** | **3,281** |
+| MiniMax-M2.5 | 1,680 | 3.51M | $1.10 | 4.8 | 1,527 |
+| Kimi-K2.5 | 1,680 | 2.70M | $0.73 | 6.2 | 2,301 |
+| Qwen3.5-Plus | 1,180 | 0.96M | $0.41 | 12.3 | 2,878 |
+| DeepSeek-R1 | 1,080 | 1.18M | $1.11 | 9.2 | 971 |
 
-> GLM-5 leads significantly across all three efficiency dimensions: score-per-token, score-per-minute, and score-per-dollar. API costs computed using OpenRouter pricing as of February 2026.
+> GLM-5 leads significantly across both efficiency dimensions: score-per-token and score-per-dollar. API costs computed using OpenRouter pricing as of February 2026.
 
 ### 4.4 Conversational Behavior Analysis
 
-| Model | Avg Rounds | Avg Tool Calls | Avg Input Tokens | Avg Output Tokens | Avg Duration |
-|-------|-----------|---------------|-----------------|------------------|-------------|
-| GLM-5 | 7.7 | 6.7 | 88.9K | 1.5K | 2m39s |
-| MiniMax-M2.5 | 10.6 | 9.7 | 164.4K | 2.6K | 3m24s |
-| Kimi-K2.5 | 8.0 | 7.0 | 126.4K | 1.9K | 2m53s |
-| Qwen3.5-Plus | 4.5 | 3.5 | 45.1K | 595 | 50s |
-| DeepSeek-R1 | 5.0 | 4.0 | 48.4K | 7.6K | 5m29s |
+| Model | Avg Rounds | Avg Tool Calls | Avg Input Tokens | Avg Output Tokens |
+|-------|-----------|---------------|-----------------|------------------|
+| GLM-5 | 7.7 | 6.7 | 88.9K | 1.5K |
+| MiniMax-M2.5 | 10.6 | 9.7 | 164.4K | 2.6K |
+| Kimi-K2.5 | 8.0 | 7.0 | 126.4K | 1.9K |
+| Qwen3.5-Plus | 4.5 | 3.5 | 45.1K | 595 |
+| DeepSeek-R1 | 5.0 | 4.0 | 48.4K | 7.6K |
 
 **The DeepSeek-R1 CoT Paradox:**
 - Fewest round trips (5.0) and tool calls (4.0) among all models
 - Yet **3–5× more output tokens** per case (7.6K vs 1.5–2.6K)
-- Longest duration (5m29s/case) and lowest score (51.4)
+- Lowest score (51.4) despite verbose reasoning output
 
 This demonstrates that R1's Chain-of-Thought reasoning generates extensive "thinking" text that fails to translate into better tool-use strategies. Its fewer tool calls mean it cannot complete tasks requiring multi-step interaction.
 
@@ -286,11 +286,10 @@ DeepSeek-R1, known for its Chain-of-Thought (CoT) reasoning capabilities, perfor
 | Avg Rounds | 5.0 | 7.7 | **0.65×** |
 | Avg Tool Calls | 4.0 | 6.7 | **0.60×** |
 | Score | 51.4 | 79.1 | **0.65×** |
-| Total Time | 115.0 min | 51.3 min | **2.24×** |
 
 R1 allocates substantial computational resources to generating CoT reasoning text, but these reasoning traces fail to translate into effective tool-use behavior:
 - In cn_dynamic_003, R1 produced 31,201 output tokens in just 5 rounds (6,240 tokens/round) yet achieved zero successful page interactions
-- In cn_dynamic_pdf_001 and cn_dynamic_pdf_002, R1 spent nearly 19 minutes each but failed to locate the target PDFs
+- In cn_dynamic_pdf_001 and cn_dynamic_pdf_002, R1 failed to locate the target PDFs despite multiple attempts
 
 **Conclusion**: For Agent tasks requiring "frequent tool calls + environment interaction," improvements in pure reasoning capability cannot compensate for deficiencies in action capability.
 
