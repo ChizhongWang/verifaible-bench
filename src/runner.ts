@@ -12,6 +12,7 @@ import * as path from 'path';
 import { runToolLoop, type LoopResult, type ToolCallRecord, type TurnRecord } from './tool-loop.js';
 import { getToolDefinitions } from './tools/registry.js';
 import { timestamp, formatDuration } from './utils.js';
+import { sendResponses as volcengineSend } from './volcengine.js';
 
 // ─── Config ───────────────────────────────────────────────────
 
@@ -23,7 +24,17 @@ const DEFAULT_MODELS = [
 
 const SYSTEM_PROMPT = `你是 VerifAIble 助手，专注于从网页采集可验证证据。
 
-## 输出要求（必须遵守）
+## 输出格式规范（CRITICAL）
+
+**工具调用规则**：
+1. 所有工具调用必须在 toolCalls 数组中，**不能只写在 reasoning 或 content 里**
+2. reasoning 用于解释思路，不执行实际操作
+3. 如果 reasoning 中提到"让我调用 xxx 工具"，下一步**必须**在 toolCalls 中实际调用
+
+❌ 错误：把工具调用写在 reasoning 里
+✅ 正确：reasoning 解释 + toolCalls 执行
+
+**输出要求**（必须遵守）
 
 完成所有工具调用后，你**必须**输出一段文字回答，包含：
 1. 查询结果的明确数值/结论
@@ -61,18 +72,55 @@ verifaible_web_search（搜索）、web_fetch（获取网页内容）、analyze_
 ## 核心方法论
 
 \`\`\`
-侦察 → 探查 → 构建 → 验证 → 提交
+侦察 → 探查 → 首次尝试 → 验证调试 → 提交
 \`\`\`
 
-| 阶段 | 工具 | 目的 |
-|------|------|------|
-| **侦察** | analyze_page ×1 | 拿到全局地图：有哪些 JS 对象、交互元素、API |
-| **探查** | test_action_steps (exec_js) | 读具体函数源码，理解调用链和数据流 |
-| **构建** | — | 根据理解构建完整 action_steps |
-| **验证** | test_action_steps (table/text) | 确认操作成功 + 目标数据正确 + 日期/上下文匹配 |
-| **提交** | verifaible_cite | 一切确认后，创建正式证据 |
+| 阶段 | 工具 | 目的 | 轮次预算 |
+|------|------|------|----------|
+| **侦察** | analyze_page ×1 | 拿到全局地图：有哪些 JS 对象、交互元素、API | 1 |
+| **探查** | test_action_steps (exec_js) | 读具体函数源码，理解调用链和数据流 | 2-3 |
+| **首次尝试** | test_action_steps (verify) | 立即构建 action_steps 并验证（即使理解不完整） | 1 |
+| **验证调试** | test_action_steps (verify) | 根据验证结果调整，确认数据正确 + 日期匹配 | 2-3 |
+| **提交** | verifaible_cite | 一切确认后，创建正式证据 | 1 |
 
-**关键原则**：先理解机制，再动手操作。不要基于截断的函数签名去猜——用 exec_js 读完整源码。
+**关键原则**：
+- 先理解机制，再动手操作。不要基于截断的函数签名去猜——用 exec_js 读完整源码
+- ❌ 不要在探查阶段停留超过 5 轮
+- ✅ 第 4-5 轮必须开始首次尝试验证（用 verify_type="table" 或 "text"）
+- ✅ 通过验证结果的错误信息来引导下一步探查
+
+## 验证机制（CRITICAL）
+
+**每次操作后必须验证结果**：
+
+### 1. 日期操作后验证
+
+设置日期后，**必须验证页面显示的日期是否匹配**：
+
+\`\`\`javascript
+// 验证页面日期显示
+{type: "exec_js", code: "设置日期的代码", wait: 3000},
+{type: "exec_js", code: "document.querySelector('.update-date')?.textContent || document.querySelector('.js_date input')?.value", wait: 500}
+\`\`\`
+
+**验证要点**：
+- 检查 .update-date、"数据日期："、表格上方日期显示
+- ⚠️ **注意日期格式差异**：20260210 ≠ 2025-02-10（年份不同！）
+- ⚠️ **注意年份**：2025 vs 2026 是完全不同的年份
+- 如果验证结果显示的日期 ≠ 目标日期 → 日期设置失败，需要调整方法
+
+### 2. 数据查询后验证
+
+获取表格/文本后，**必须验证数据对应的日期**：
+- 检查表格内容中的日期列（第一列常是日期）
+- 检查上下文文本（"截至2025年..."、"数据日期：..."）
+- 确认数据与目标日期一致后才提交引用
+
+### 3. 验证失败后的行动
+
+- 如果日期不匹配 → 重新探查日期设置机制（尝试不同方法）
+- 如果数据格式不对 → 检查 wait 时间是否足够（JSONP 可能需 3-5 秒）
+- 如果 3 次尝试后仍失败 → 寻找 API 端点或历史数据页面
 
 ## 路径 C：视频证据（字幕提取）
 
@@ -107,7 +155,15 @@ verifaible_web_search（搜索）、web_fetch（获取网页内容）、analyze_
 
 ### 2. test_action_steps — 探查 + 验证（核心工具）
 
-**⚠️ 核心概念：每次调用都是全新的浏览器会话。** 状态不会跨调用保持。如果上一次调用设置了日期、切换了 Tab、调用了查询方法，下一次调用这些操作都不存在——页面回到初始状态。因此 action_steps 必须是**自包含的**：每次都要包含完整的操作序列（设日期 + 调查询 + 清理 + 提取数据）。
+**⚠️ 核心概念：每次调用都是全新的浏览器会话。**
+
+状态不会跨调用保持。如果上一次调用设置了日期、切换了 Tab、调用了查询方法，下一次调用这些操作都不存在——页面回到初始状态。
+
+**因此 action_steps 必须是自包含的**：每次都要包含完整的操作序列（设日期 + 调查询 + 清理 + 提取数据）。
+
+**验证时也要重新执行完整流程**：
+- ❌ 不要假设"上次已经设置过日期了"
+- ✅ 验证阶段的 action_steps = 最终提交的 action_steps
 
 这是最重要的工具，有两种用法：
 
@@ -288,20 +344,27 @@ analyze_page(url)
 ### Phase 2：探查（用 test_action_steps 的 exec_js）
 读 setParams 完整源码，确认是否内部调了 getList。
 
-### Phase 3：构建 action_steps
+### Phase 3：首次尝试
+立即构建 action_steps 并验证，即使理解不完整：
 \`\`\`json
 [
-  {"type": "exec_js", "code": "document.querySelector('.js_date input').value='2025-02-11'; dataQuery.setParams(); dataQuery.getList(); 'done'", "wait": 5000},
-  {"type": "exec_js", "code": "document.querySelectorAll('header,.fixed-top').forEach(e=>e.remove()); 'cleaned'", "wait": 300}
+  {"type": "exec_js", "code": "document.querySelector('.js_date input').value='2025-02-11'; dataQuery.setParams(); dataQuery.getList(); 'done'", "wait": 5000}
 ]
 \`\`\`
 
-### Phase 4：验证
+### Phase 4：验证调试
 **⚠️ 验证时必须重新执行完整的 action_steps**（设日期 + 查询），因为这是全新会话。
-**必须验证两件事**：1. 目标数据存在 2. 日期/上下文正确
+**必须验证两件事**：
+1. 目标数据存在
+2. **日期/上下文正确**（检查页面显示的日期是 2025-02-11）
+
+如果日期不对或数据不对，调整方法并重新验证。
 
 ### Phase 5：提交
-确认数据和日期都正确后：verifaible_cite(claim, source_url, ..., action_steps)
+确认数据和日期都正确后：
+\`\`\`json
+verifaible_cite(claim, source_url, ..., action_steps)
+\`\`\`
 
 ## 常见的页面交互模式
 
@@ -312,25 +375,92 @@ analyze_page(url)
 
 **关键**：setParams 和 getList 可能需要分别调用。用 Phase 2 探查 setParams 源码确认它是否内部调了 getList。
 
-### 模式 B：日历组件（laydate / flatpickr / DatePicker）
-直接设 \`input.value\` 可能不够（组件维护内部状态）。设日期的可靠方式（按优先级）：
-1. 先设 input.value，再调页面的 setParams + getList
-2. 如果不行，用 native event dispatch：\`input.dispatchEvent(new Event('change'))\`
-3. 如果还不行，直接修改全局对象的参数：\`dataQuery.params.SEARCH_DATE = '2025-02-11'; dataQuery.getList()\`
+### 模式 B：日期设置的三层方法（按优先级）
+
+#### 方法 1：调用页面查询方法（优先）
+\`\`\`javascript
+// 1. 设置 input.value
+document.querySelector('.js_date input').value = 'YYYY-MM-DD';
+// 2. 调用页面的查询方法（从探查中发现）
+window.dataObj.setParams();
+window.dataObj.getList();
+\`\`\`
+
+**验证**（必须）：
+\`\`\`javascript
+// 设置后等待 3-5 秒，然后验证页面显示的日期
+{type: "exec_js", code: "上述设置代码", wait: 3000},
+{type: "exec_js", code: "document.querySelector('.update-date')?.textContent || document.querySelector('.js_date input')?.value", wait: 500}
+\`\`\`
+
+如果返回的日期 ≠ 目标日期 → 方法失败，尝试方法 2
+
+#### 方法 2：触发 UI 事件
+\`\`\`javascript
+var inp = document.querySelector('.js_date input');
+inp.removeAttribute('readonly');  // 如果输入框是 readonly
+inp.value = 'YYYY-MM-DD';
+inp.dispatchEvent(new Event('input', {bubbles:true}));
+inp.dispatchEvent(new Event('change', {bubbles:true}));
+// 然后点击查询按钮
+document.querySelector('.search-btn')?.click();
+\`\`\`
+
+#### 方法 3：直接修改全局对象参数
+\`\`\`javascript
+window.dataObj.params.SEARCH_DATE = 'YYYY-MM-DD';
+window.dataObj.getList();
+\`\`\`
+
+**注意**：
+- 输入框是 readonly 的不能用 type 操作，必须用 exec_js
+- JSONP/Ajax 请求需要 3-5 秒加载时间，wait 要足够
+- **每次尝试后都要验证日期是否生效**
 
 ## 工具调用预算规划
 
-以 10 次调用为例的理想分配：
+以 10-15 次调用为目标的理想分配：
 
-| 次数 | 用途 |
+| 轮次 | 用途 |
 |------|------|
 | 1 | analyze_page — 侦察 |
-| 2 | test_action_steps (exec_js) — 确认/发现正确的全局对象 |
-| 3-4 | test_action_steps (exec_js) — 探查关键函数源码 |
-| 5-6 | test_action_steps — 构建+验证操作 |
-| 7 | test_action_steps — 验证日期/上下文正确 |
+| 2-3 | test_action_steps (exec_js) — 探查关键函数源码 |
+| 4 | test_action_steps (verify) — 首次尝试（立即验证，不过度探查） |
+| 5-7 | test_action_steps (verify) — 验证调试（确认日期正确 + 数据正确） |
 | 8 | verifaible_cite — 提交 |
 | 9-10 | 备用（应对意外） |
+
+**关键**：
+- 不要在探查阶段停留超过 5 轮
+- 第 4-5 轮必须开始验证尝试
+- 如果 3 次验证后仍失败，考虑切换策略（寻找 API 端点、历史数据页面）
+
+## 常见卡点自查清单
+
+如果尝试 3 次后仍无法获取正确数据，检查：
+
+### 1. 日期格式与验证
+- [ ] 页面用的是 YYYYMMDD 还是 YYYY-MM-DD？
+- [ ] 我设置的格式与页面一致吗？
+- [ ] **年份正确吗**？（20260210 ≠ 20250210，注意 2025 vs 2026）
+- [ ] 设置日期后，我验证了页面显示的日期吗？
+- [ ] 表格数据的日期列显示的是目标日期吗？
+
+### 2. 等待时间
+- [ ] JSONP/Ajax 请求可能需要 3-5 秒，wait 时间足够吗？
+- [ ] 我在验证前等待了数据加载吗？
+
+### 3. 方法调用
+- [ ] 我读了 setParams 的源码，确认它是否内部调了 getList？
+- [ ] 我是分别调用了 setParams() 和 getList()，还是只调了一个？
+
+### 4. 输入框限制
+- [ ] 输入框是 readonly 的吗？（不能用 type 操作，必须用 exec_js）
+- [ ] 我移除了 readonly 属性吗？
+
+### 5. 验证完整性
+- [ ] 我验证了数据对应的日期，而不只是数据值本身吗？
+- [ ] 我检查了页面上的"数据日期："、.update-date 等日期显示吗？
 
 ## 常见错误（DO NOT）
 
@@ -341,7 +471,9 @@ analyze_page(url)
 - ❌ **不要过早 verifaible_cite** — 它是最后一步，之前必须验证通过
 - ❌ **不要在 exec_js 中用 \`return\`** — 代码是表达式，直接写 \`obj.method.toString()\`
 - ❌ **不要假设 analyze_page 返回的对象就是正确的** — 页面可能有 80+ 全局对象，analyze_page 只显示 15 个
-- ❌ **不要假设上一次 test_action_steps 的状态还在** — 每次调用是全新浏览器会话`;
+- ❌ **不要假设上一次 test_action_steps 的状态还在** — 每次调用是全新浏览器会话
+- ❌ **不要在探查阶段停留超过 5 轮** — 第 4-5 轮必须开始验证尝试
+- ❌ **不要忽略日期验证** — 设置日期后必须检查页面显示的日期是否匹配目标日期`;
 
 // ─── Types ───────────────────────────────────────────────────
 
@@ -523,6 +655,23 @@ function citeCallSucceeded(turns: Array<{ toolCalls?: ToolCallRecord[] }>): bool
 }
 
 /**
+ * Extract answer text from verifaible_cite call arguments (claim + quoted_text).
+ * This serves as a fallback when the model's final text answer is empty or incomplete.
+ */
+function extractCiteAnswerText(turns: Array<{ toolCalls?: ToolCallRecord[] }>): string {
+  const parts: string[] = [];
+  for (const turn of turns) {
+    for (const tc of turn.toolCalls ?? []) {
+      if (tc.name === 'verifaible_cite') {
+        if (tc.arguments.claim) parts.push(String(tc.arguments.claim));
+        if (tc.arguments.quoted_text) parts.push(String(tc.arguments.quoted_text));
+      }
+    }
+  }
+  return parts.join(' ');
+}
+
+/**
  * Score a benchmark run result against a test case.
  *
  * Dimensions (weighted):
@@ -532,9 +681,11 @@ function citeCallSucceeded(turns: Array<{ toolCalls?: ToolCallRecord[] }>): bool
  *   evidenceTypeMatch — 20 pts: cite used correct evidence_type
  */
 function scoreResult(tc: TestCase, result: LoopResult): ScoreResult {
-  // 1. Answer correctness
+  // 1. Answer correctness — check both final answer text AND verifaible_cite arguments
   const expectedKeys = extractKeyValues(tc.answer);
-  const matchedKeys = expectedKeys.filter((k) => keyFoundInAnswer(k, result.answer));
+  const citeText = extractCiteAnswerText(result.turns);
+  const combinedAnswer = [result.answer, citeText].filter(Boolean).join(' ');
+  const matchedKeys = expectedKeys.filter((k) => keyFoundInAnswer(k, combinedAnswer));
   const answerCorrect = expectedKeys.length > 0 ? matchedKeys.length / expectedKeys.length : 0;
 
   // 2. Citation created
@@ -548,19 +699,26 @@ function scoreResult(tc: TestCase, result: LoopResult): ScoreResult {
   const actualType = getActualEvidenceType(result.turns);
   let evidenceTypeMatch: boolean | null = null;
   if (expectedType && actualType) {
-    evidenceTypeMatch = actualType === expectedType;
+    // Support pipe-separated types: "text|table" means either is acceptable
+    const acceptedTypes = expectedType.split('|');
+    evidenceTypeMatch = acceptedTypes.includes(actualType);
   } else if (expectedType && !actualType) {
     // No cite call at all → mismatch
     evidenceTypeMatch = false;
   }
 
-  // Composite score
+  // Composite score — gate: answer must be fully correct AND citation created,
+  // otherwise total = 0 (找不到正确答案 = 失败 = 零分)
   let totalScore = 0;
-  totalScore += answerCorrect * 40;
-  totalScore += citationCreated ? 25 : 0;
-  totalScore += citationInText ? 15 : 0;
-  if (evidenceTypeMatch === true) totalScore += 20;
-  else if (evidenceTypeMatch === null) totalScore += 20; // no expected type = full marks
+  if (answerCorrect < 1.0 || !citationCreated) {
+    totalScore = 0;
+  } else {
+    totalScore += answerCorrect * 40;          // 40
+    totalScore += citationCreated ? 25 : 0;    // 25
+    totalScore += citationInText ? 15 : 0;     // 15
+    if (evidenceTypeMatch === true) totalScore += 20;
+    else if (evidenceTypeMatch === null) totalScore += 20; // no expected type = full marks
+  }
 
   return {
     answerCorrect,
@@ -715,6 +873,7 @@ async function main() {
   const taskFile = args[0] || 'testset.json';
   const modelsArg = args[1]; // optional comma-separated model list
   const filterArg = args[2]; // optional task ID filter (comma-separated)
+  const batchArg = args[3];  // optional batch name (e.g. batch_001)
 
   const models = modelsArg ? modelsArg.split(',') : DEFAULT_MODELS;
   const taskFilter = filterArg ? filterArg.split(',') : null;
@@ -762,32 +921,53 @@ async function main() {
   console.log(`Models: ${models.join(', ')}`);
   console.log(`Total runs: ${cases.length * models.length}\n`);
 
-  // Ensure results directory
-  const resultsDir = path.resolve('results');
-  fs.mkdirSync(resultsDir, { recursive: true });
+  // Ensure results directory: results/<batch>/<model>/<task_id>/
+  const baseResultsDir = path.resolve('results');
+  const batchName = batchArg || `run_${timestamp()}`;
+  const batchDir = path.join(baseResultsDir, batchName);
+  fs.mkdirSync(batchDir, { recursive: true });
+  console.log(`Batch: ${batchName}\n`);
 
   // Run all combinations
   const summary: SummaryRow[] = [];
 
   for (const model of models) {
+    const modelDir = path.join(batchDir, sanitize(model));
+    fs.mkdirSync(modelDir, { recursive: true });
+
     for (const tc of cases) {
-      const runId = `${sanitize(model)}_${tc.id}_${timestamp()}`;
-      const runDir = path.join(resultsDir, runId);
+      const runDir = path.join(modelDir, tc.id);
       fs.mkdirSync(runDir, { recursive: true });
+
+      // Resume: skip if metrics.json already exists (task completed before)
+      const metricsPath = path.join(runDir, 'metrics.json');
+      if (fs.existsSync(metricsPath)) {
+        console.log(`═══ ${model} × ${tc.id} (${tc.category}) ═══  [SKIP — already done]`);
+        // Load existing metrics into summary
+        try {
+          const existing = JSON.parse(fs.readFileSync(metricsPath, 'utf-8'));
+          summary.push(existing);
+        } catch { /* ignore parse errors */ }
+        continue;
+      }
 
       const prompt = isTestSet ? generatePrompt(tc) : (tc as any)._prompt || tc.question;
       console.log(`═══ ${model} × ${tc.id} (${tc.category}) ═══`);
 
       let result: LoopResult;
       try {
+        const sendFn = model.startsWith('doubao-') ? volcengineSend : undefined;
         result = await runToolLoop({
           model,
           systemPrompt: SYSTEM_PROMPT,
           userMessage: prompt,
+          sendFn,
         });
       } catch (err) {
         const errorMsg = err instanceof Error ? err.message : String(err);
-        console.error(`  ERROR: ${errorMsg}\n`);
+        console.error(`  ERROR: ${errorMsg}`);
+        console.error(`  SKIP: continuing to next task.`);
+        fs.writeFileSync(path.join(runDir, 'error.txt'), errorMsg);
         summary.push({
           model,
           task: tc.id,
@@ -800,7 +980,6 @@ async function main() {
           durationMs: 0,
           error: errorMsg,
         });
-        fs.writeFileSync(path.join(runDir, 'error.txt'), errorMsg);
         continue;
       }
 
@@ -880,9 +1059,6 @@ async function main() {
         },
       );
       fs.writeFileSync(path.join(runDir, 'sft.json'), JSON.stringify(sftExample, null, 2));
-      // Append to aggregated dataset (one JSONL line per run)
-      const sftDatasetPath = path.join(resultsDir, 'sft_dataset.jsonl');
-      fs.appendFileSync(sftDatasetPath, JSON.stringify(sftExample) + '\n');
 
       const scoreStr = score ? ` | Score: ${score.totalScore}/100` : '';
       console.log(
@@ -1032,11 +1208,9 @@ async function main() {
   }
 
   // Save summary
-  fs.writeFileSync(
-    path.join(resultsDir, `summary_${timestamp()}.json`),
-    JSON.stringify(summary, null, 2),
-  );
-  console.log(`\nSummary saved to results/summary_${timestamp()}.json`);
+  const summaryPath = path.join(batchDir, 'summary.json');
+  fs.writeFileSync(summaryPath, JSON.stringify(summary, null, 2));
+  console.log(`\nSummary saved to ${path.relative(process.cwd(), summaryPath)}`);
 }
 
 function sanitize(s: string): string {

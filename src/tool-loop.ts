@@ -6,15 +6,18 @@
  */
 
 import {
-  sendResponses,
+  sendResponses as openrouterSend,
   type InputItem,
   type FunctionCall,
   type FunctionCallOutput,
   type OutputItem,
+  type SendOptions,
+  type ResponsesResult,
   type ToolDefinition,
   type Usage,
 } from './openrouter.js';
 import { getHandler, getToolDefinitions } from './tools/registry.js';
+import { randomUUID } from 'node:crypto';
 
 export interface ToolCallRecord {
   name: string;
@@ -54,6 +57,8 @@ export interface LoopOptions {
   maxRoundTrips?: number;
   tools?: ToolDefinition[];
   temperature?: number;
+  /** Custom send function (default: OpenRouter sendResponses) */
+  sendFn?: (opts: SendOptions) => Promise<ResponsesResult>;
 }
 
 export async function runToolLoop(opts: LoopOptions): Promise<LoopResult> {
@@ -64,6 +69,7 @@ export async function runToolLoop(opts: LoopOptions): Promise<LoopResult> {
     maxRoundTrips = 30,
     tools = getToolDefinitions(),
     temperature = 0.3,
+    sendFn = openrouterSend,
   } = opts;
 
   const startTime = Date.now();
@@ -85,7 +91,7 @@ export async function runToolLoop(opts: LoopOptions): Promise<LoopResult> {
 
     console.log(`  [Turn ${roundTrips}] Sending to ${model}...`);
 
-    const response = await sendResponses({
+    const response = await sendFn({
       model,
       input,
       tools,
@@ -129,7 +135,25 @@ export async function runToolLoop(opts: LoopOptions): Promise<LoopResult> {
 
     const reasoning = reasoningParts.length > 0 ? reasoningParts.join('\n') : undefined;
 
-    // If no function calls, we're done
+    // If no function calls from API, check if model embedded tool calls in text content
+    // (DeepSeek-R1 sometimes writes tool calls in content text with special tokens)
+    if (functionCalls.length === 0) {
+      const rawText = textParts.join('\n');
+      const parsedCalls = parseToolCallsFromContent(rawText);
+      if (parsedCalls.length > 0) {
+        console.log(`    [R1-compat] Parsed ${parsedCalls.length} tool call(s) from content text`);
+        functionCalls.push(...parsedCalls);
+        // Strip the tool call JSON block from the visible text
+        const cleanedText = stripToolCallBlocks(rawText);
+        textParts.length = 0;
+        textParts.push(cleanedText);
+        // Clear previousResponseId — the API's stored response doesn't contain
+        // our synthetic function_call items, so we must rely on the full input array
+        previousResponseId = undefined;
+      }
+    }
+
+    // If still no function calls after fallback parsing, we're done
     if (functionCalls.length === 0) {
       const answer = textParts.join('\n');
       turns.push({ role: 'assistant', content: answer, reasoning, usage: response.usage });
@@ -227,4 +251,122 @@ function summarizeArgs(args: Record<string, unknown>): string {
     parts.push(`${k}=${s.length > 60 ? s.slice(0, 57) + '...' : s}`);
   }
   return parts.join(', ');
+}
+
+/* ------------------------------------------------------------------ *
+ * DeepSeek-R1 compatibility: parse tool calls embedded in content text
+ * ------------------------------------------------------------------ */
+
+/**
+ * DeepSeek-R1 sometimes embeds tool calls in the content text instead of
+ * returning proper function_call output items.  The pattern looks like:
+ *
+ *   ```json
+ *   [{"name": "tool_name", "arguments": {...}}]
+ *   ```<｜tool▁call▁end｜><｜tool▁calls▁end｜>
+ *
+ * or sometimes without backtick fences, just the JSON followed by the special tokens.
+ */
+function parseToolCallsFromContent(text: string): FunctionCall[] {
+  // Detect DeepSeek special end-tokens — both full-width and half-width variants
+  const hasDeepSeekTokens =
+    text.includes('<｜tool') || text.includes('<|tool');
+
+  if (!hasDeepSeekTokens) return [];
+
+  const calls: FunctionCall[] = [];
+
+  // Strategy 1: Extract JSON array/object from markdown code blocks
+  const codeBlockRegex = /```(?:json)?\s*\n?([\s\S]*?)```/g;
+  let match: RegExpExecArray | null;
+
+  while ((match = codeBlockRegex.exec(text)) !== null) {
+    const block = match[1].trim();
+    const parsed = tryParseToolCalls(block);
+    if (parsed.length > 0) {
+      calls.push(...parsed);
+    }
+  }
+
+  // Strategy 2: If no code blocks matched, try to find raw JSON array/object
+  // before the DeepSeek tokens
+  if (calls.length === 0) {
+    const tokenRegex = /<[｜|]tool[▁_]call[▁_]end[｜|]>/;
+    const tokenMatch = tokenRegex.exec(text);
+    if (tokenMatch) {
+      // Look backwards from the token position for a JSON block
+      const beforeToken = text.slice(0, tokenMatch.index).trimEnd();
+      // Find the start of JSON (last [ or { that isn't nested)
+      const jsonStart = findJsonStart(beforeToken);
+      if (jsonStart >= 0) {
+        const jsonStr = beforeToken.slice(jsonStart).trim();
+        const parsed = tryParseToolCalls(jsonStr);
+        if (parsed.length > 0) {
+          calls.push(...parsed);
+        }
+      }
+    }
+  }
+
+  return calls;
+}
+
+/** Try to parse a string as a tool call array or single tool call object. */
+function tryParseToolCalls(jsonStr: string): FunctionCall[] {
+  try {
+    const parsed = JSON.parse(jsonStr);
+    const items = Array.isArray(parsed) ? parsed : [parsed];
+    const calls: FunctionCall[] = [];
+
+    for (const item of items) {
+      if (item && typeof item.name === 'string' && item.arguments !== undefined) {
+        const callId = `call_${randomUUID().replace(/-/g, '').slice(0, 24)}`;
+        calls.push({
+          type: 'function_call',
+          id: callId,
+          call_id: callId,
+          name: item.name,
+          arguments: typeof item.arguments === 'string'
+            ? item.arguments
+            : JSON.stringify(item.arguments),
+        });
+      }
+    }
+
+    return calls;
+  } catch {
+    return [];
+  }
+}
+
+/** Find the start index of a JSON array or object in a string (scanning backwards). */
+function findJsonStart(text: string): number {
+  // Look for the last unmatched '[' or '{'
+  let depth = 0;
+  for (let i = text.length - 1; i >= 0; i--) {
+    const ch = text[i];
+    if (ch === ']' || ch === '}') depth++;
+    else if (ch === '[' || ch === '{') {
+      depth--;
+      if (depth < 0) return i;  // Found the opening bracket
+    }
+  }
+  return -1;
+}
+
+/** Strip embedded tool call JSON blocks and DeepSeek tokens from visible text. */
+function stripToolCallBlocks(text: string): string {
+  // Remove code blocks containing tool calls + DeepSeek tokens
+  let cleaned = text;
+
+  // Remove ```json ... ```<tokens> patterns
+  cleaned = cleaned.replace(
+    /```(?:json)?\s*\n?[\s\S]*?```\s*(?:<[｜|]tool[^\n]*>)*/g,
+    ''
+  );
+
+  // Remove standalone DeepSeek tokens
+  cleaned = cleaned.replace(/<[｜|]tool[▁_][^>]*>/g, '');
+
+  return cleaned.trim();
 }
