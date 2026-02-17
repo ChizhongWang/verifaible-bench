@@ -126,10 +126,10 @@ Five LLMs accessible via OpenRouter were selected for this evaluation:
 | **GLM-5** | Zhipu AI (Z-AI) | 744B / 40B (MoE) | Next-generation general-purpose model with strong tool-calling capabilities |
 | **Kimi-K2.5** | Moonshot AI | 1T / 32B (MoE) | Excels at long-context understanding with multimodal support |
 | **MiniMax-M2.5** | MiniMax | 230B / 10B (MoE) | Cost-effective model with large context window |
-| **Qwen3.5-Plus** | Alibaba Cloud (Qwen) | Undisclosed† | General-purpose model with efficient token usage |
+| **Qwen3.5-Plus** | Alibaba Cloud (Qwen) | 397B / 17B (MoE) | General-purpose model with efficient token usage |
 | **DeepSeek-R1** | DeepSeek | 671B / 37B (MoE) | Reasoning-specialized model with deep Chain-of-Thought inference |
 
-> † Qwen3.5-Plus parameter count is not officially disclosed. The open-source Qwen3.5 uses a 397B / 17B MoE architecture for reference.
+> Qwen3.5-Plus is the hosted API version of [Qwen3.5-397B-A17B](https://huggingface.co/Qwen/Qwen3.5-397B-A17B) (512 experts, 11 active per token).
 
 ---
 

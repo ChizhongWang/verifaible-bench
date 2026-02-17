@@ -126,10 +126,10 @@ else:
 | **GLM-5** | 智谱 AI (Z-AI) | 744B / 40B (MoE) | 新一代通用大模型，工具调用能力强 |
 | **Kimi-K2.5** | 月之暗面 (Moonshot AI) | 1T / 32B (MoE) | 擅长长文本理解，支持多模态 |
 | **MiniMax-M2.5** | MiniMax | 230B / 10B (MoE) | 高性价比模型，上下文窗口大 |
-| **Qwen3.5-Plus** | 阿里云（通义千问） | 未公开† | 通用大模型，Token 使用高效 |
+| **Qwen3.5-Plus** | 阿里云（通义千问） | 397B / 17B (MoE) | 通用大模型，Token 使用高效 |
 | **DeepSeek-R1** | DeepSeek | 671B / 37B (MoE) | 推理专用模型，Chain-of-Thought 深度推理 |
 
-> † Qwen3.5-Plus 参数量未官方公开，开源版 Qwen3.5 采用 397B / 17B 的 MoE 架构，仅供参考。
+> Qwen3.5-Plus 为 [Qwen3.5-397B-A17B](https://huggingface.co/Qwen/Qwen3.5-397B-A17B) 的托管 API 版本（512 专家，每 token 激活 11 个）。
 
 ---
 
