@@ -1369,10 +1369,9 @@
             localStorage.setItem('researchLang', lang);
         }
 
-        // Load saved preference
+        // Load saved preference (default: English)
         document.addEventListener('DOMContentLoaded', function() {
-            const saved = localStorage.getItem('researchLang') ||
-                          (localStorage.getItem('preferredLanguage') || '').startsWith('zh') ? 'zh' : 'en';
+            const saved = localStorage.getItem('researchLang') || 'en';
             if (saved === 'zh') {
                 switchLang('zh');
                 document.querySelectorAll('.lang-toggle button')[1].classList.add('active');
