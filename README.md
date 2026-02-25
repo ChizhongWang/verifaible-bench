@@ -12,7 +12,7 @@
 
 ## Abstract
 
-LLMs excel at generative tasks, yet their tendency to "hallucinate" limits adoption in high-stakes domains. **VerifAIble Bench** is the first end-to-end benchmark for evaluating LLM Agents on *verifiable evidence collection*. It comprises **21 test cases** spanning static text, HTML tables, JavaScript-rendered dynamic pages, PDF documents, and video transcripts, drawn from financial regulatory portals in China and the United States. Models are evaluated using an all-or-nothing gated scoring system across four dimensions: answer correctness, citation creation, citation embedding, and evidence type matching.
+LLMs excel at generative tasks, yet their tendency to "hallucinate" limits adoption in high-stakes domains. **VerifAIble Bench** is the first end-to-end benchmark for evaluating LLM Agents on *verifiable evidence collection*. It comprises **21 test cases** spanning static text, HTML tables, JavaScript-rendered dynamic pages, PDF documents, and video transcripts, drawn from financial regulatory portals in China and the United States. We evaluate **6 models** (GLM-5, Kimi-K2.5, MiniMax-M2.5, Doubao-Seed-2.0, Qwen3.5-Plus, DeepSeek-R1) using an all-or-nothing gated scoring system across four dimensions: answer correctness, citation creation, citation embedding, and evidence type matching.
 
 ---
 
@@ -23,10 +23,11 @@ LLMs excel at generative tasks, yet their tendency to "hallucinate" limits adopt
 | 🥇 | **GLM-5** | **2,100** | **100.0** | **21/21** | **21/21** | **$0.64** |
 | 🥈 | **MiniMax-M2.5** | 1,680 | 80.0 | 17/21 | 16/21 | $1.10 |
 | 🥈 | **Kimi-K2.5** | 1,680 | 80.0 | 17/21 | 16/21 | $0.73 |
-| 4 | **Qwen3.5-Plus** | 1,180 | 56.2 | 12/21 | 11/21 | $0.41 |
-| 5 | DeepSeek-R1 | 1,080 | 51.4 | 11/21 | 10/21 | $1.11 |
+| 4 | **Doubao-Seed-2.0** | 1,400 | 66.7 | 14/21 | 14/21 | $0.84† |
+| 5 | Qwen3.5-Plus | 1,180 | 56.2 | 12/21 | 11/21 | $0.41 |
+| 6 | DeepSeek-R1 | 1,080 | 51.4 | 11/21 | 10/21 | $1.11 |
 
-> All 5 models complete the full 21-case benchmark for **under $1.20**, validating the economic feasibility of agent-based evidence collection. GLM-5 achieves a cost-efficiency (score/$) **3.4× higher** than the lowest-ranked model.
+> All 6 models complete the full 21-case benchmark for **under $1.20**, validating the economic feasibility of agent-based evidence collection. GLM-5 achieves a cost-efficiency (score/$) **3.4× higher** than the lowest-ranked model. †Doubao-Seed-2.0 cost converted from Volcengine ARK API pricing (CNY).
 
 ---
 
@@ -79,15 +80,15 @@ This yields only three possible scores per case: **100** (perfect), **80** (corr
 
 ## Category Results
 
-| Category | Cases | GLM-5 | MiniMax-M2.5 | Kimi-K2.5 | Qwen3.5-Plus | DeepSeek-R1 |
-|----------|:-----:|:-----:|:------------:|:---------:|:------------:|:-----------:|
-| Static Text | 6 | **600** (100%) | 580 (97%) | **600** (100%) | **600** (100%) | **600** (100%) |
-| Static Table | 7 | **700** (100%) | **700** (100%) | 600 (86%) | 480 (69%) | 580 (83%) |
-| Dynamic Page | 4 | **400** (100%) | 0 (0%) | 100 (25%) | 0 (0%) | 0 (0%) |
-| Dynamic + PDF | 2 | **200** (100%) | **200** (100%) | 180 (90%) | 0 (0%) | 0 (0%) |
-| Video | 2 | **200** (100%) | **200** (100%) | **200** (100%) | 100 (50%) | 0 (0%) |
+| Category | Cases | GLM-5 | MiniMax | Kimi | Doubao | Qwen3.5+ | R1 |
+|----------|:-----:|:-----:|:------:|:----:|:------:|:--------:|:--:|
+| Static Text | 6 | **600** (100%) | 580 (97%) | **600** (100%) | **600** (100%) | **600** (100%) | **600** (100%) |
+| Static Table | 7 | **700** (100%) | **700** (100%) | 600 (86%) | 500 (71%) | 480 (69%) | 580 (83%) |
+| Dynamic Page | 4 | **400** (100%) | 0 (0%) | 100 (25%) | 0 (0%) | 0 (0%) | 0 (0%) |
+| Dynamic + PDF | 2 | **200** (100%) | **200** (100%) | 180 (90%) | **200** (100%) | 0 (0%) | 0 (0%) |
+| Video | 2 | **200** (100%) | **200** (100%) | **200** (100%) | 100 (50%) | 100 (50%) | 0 (0%) |
 
-**Key findings:** Dynamic page interaction is the dominant differentiator — only GLM-5 completed all 4 dynamic cases. DeepSeek-R1's Chain-of-Thought reasoning generates extensive "thinking" text but fails to translate into effective tool-use behavior.
+**Key findings:** Dynamic page interaction is the dominant differentiator — only GLM-5 completed all 4 dynamic cases. Doubao-Seed-2.0, Qwen3.5-Plus, and DeepSeek-R1 all scored 0% on dynamic pages, though Doubao succeeds on Dynamic+PDF.
 
 ---
 
